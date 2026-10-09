@@ -1,0 +1,6 @@
+name: GuiForge
+version: '0.1.0-SNAPSHOT'
+main: dev.diego.guiforge.GuiForgePlugin
+api-version: '26.3'
+description: Data-driven GUIs for Paper plugins.
+authors: [Diego]
