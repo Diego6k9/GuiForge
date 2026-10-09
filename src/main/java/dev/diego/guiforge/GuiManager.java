@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.logging.Logger;
 
 /**
@@ -23,6 +25,7 @@ public final class GuiManager {
 
     private final JavaPlugin plugin;
     private final Map<String, Gui<?>> guis = new HashMap<>();
+    private final ActionRegistry actions = new ActionRegistry();
 
     public GuiManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -62,6 +65,18 @@ public final class GuiManager {
         gui.open(player);
     }
 
+    /**
+     * Registers an action for JSON strings that start with {@code prefix}, e.g. {@code "shop:"} for
+     * {@code "shop:buy"}. The handler receives the text after the prefix. Built-in prefixes cannot be used.
+     */
+    public void registerAction(String prefix, BiConsumer<Player, String> handler) {
+        actions.register(prefix, handler);
+    }
+
+    boolean runCustomAction(String action, Player player) {
+        return actions.run(action, player);
+    }
+
     Logger logger() {
         return plugin.getLogger();
     }
@@ -83,6 +98,13 @@ public final class GuiManager {
                 event.setCancelled(false);
             }
             session.handleClick(event);
+        }
+
+        @EventHandler(priority = EventPriority.MONITOR)
+        void onClose(InventoryCloseEvent event) {
+            if (event.getInventory().getHolder() instanceof GuiSession session) {
+                session.handleClose();
+            }
         }
 
         @EventHandler(priority = EventPriority.LOW, ignoreCancelled = false)

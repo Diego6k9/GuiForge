@@ -30,7 +30,7 @@ Layout-Daten für GUIs. Verhalten (Klick-Logik) gehört **nicht** ins Format, so
 | `hideAttributes`  | bool     | `true`      | Blendet die Attribut-Zeilen von Waffen und Rüstung (Schaden, Angriffstempo, Rüstung) im Tooltip aus. `false` zeigt sie wie im Spiel. |
 | `skin`            | string   | –           | Nur für `minecraft:player_head`. Textur-Hash (64 Hex-Zeichen) oder `http://textures.minecraft.net/texture/<hash>`. Andere Materialien: Fehler. |
 | `locked`          | bool     | `true`      | `false` = Spieler darf das Item aus dem Slot nehmen.                                                                                           |
-| `action`          | string   | –           | Nur geschlossene Navigation: `close`, `next-page`, `prev-page`, `open:<gui-id>`.                                                               |
+| `action`          | string   | –           | `close`, `next-page`, `prev-page` (nur paginiert), `open:<gui-id>`, `sound:<name>[:<lautstärke>:<tonhöhe>]` (z. B. `sound:entity.experience_orb.pickup:0.8:1.2`, Tonhöhe 0,5–2), `message:<text>` (MiniMessage, `{token}` möglich). Eigene Aktionen per `registerAction("prefix:", …)` in Java. |
 
 ## Paginierung (`content`)
 
