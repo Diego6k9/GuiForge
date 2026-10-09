@@ -1,68 +1,66 @@
 # GuiForge Format v1
 
-Layout-Daten für GUIs. Verhalten (Klick-Logik) gehört **nicht** ins Format, sondern wird im Code per `key` gebunden.
+Layout data for GUIs. Behaviour (click logic) does **not** belong in the format. It is bound in code by `key`.
 
-## GUI (Root)
+## GUI (root)
 
-| Feld            | Typ    | Pflicht | Beschreibung                                                          |
-|-----------------|--------|---------|-----------------------------------------------------------------------|
-| `formatVersion` | int    | ja      | Muss `1` sein.                                                        |
-| `id`            | string | ja      | Eindeutige GUI-ID im Projekt, z.B. `shop-main`. Ziel für `open:<id>`. |
-| `type`          | string | nein    | Nur `"chest"` in v1. Default `"chest"`.                               |
-| `rows`          | int    | ja      | 1 bis 6. Inventargröße = `rows * 9`.                                  |
-| `title`         | string | nein    | MiniMessage.                                                          |
-| `items`         | array  | nein    | Feste Items (Rahmen, Buttons, Deko).                                  |
-| `content`       | object | nein    | Nur bei paginierten GUIs. Siehe unten.                                |
+| Field           | Type   | Required | Description                                                                 |
+|-----------------|--------|----------|-----------------------------------------------------------------------------|
+| `formatVersion` | int    | yes      | Must be `1`.                                                                |
+| `id`            | string | yes      | Unique GUI ID in the project, e.g. `shop-main`. Target for `open:<id>`.     |
+| `type`          | string | no       | Only `"chest"` in v1. Default `"chest"`.                                    |
+| `rows`          | int    | yes      | 1 to 6. Inventory size = `rows * 9`.                                        |
+| `title`         | string | no       | MiniMessage. Supports `{token}` placeholders.                               |
+| `items`         | array  | no       | Fixed items (frames, buttons, decoration).                                  |
+| `content`       | object | no       | Only for paginated GUIs. See below.                                         |
 
 ## Item
 
-| Feld              | Typ      | Default     | Beschreibung                                                                                                                                   |
-|-------------------|----------|-------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| `key`             | string   | –           | Stabile ID. Pflicht, wenn das Item Klick-Logik bekommt oder Nav-Button ist. Ohne `key` ist es reine Deko.                                      |
-| `slots`           | int[]    | – (Pflicht) | Slots im Inventar, 0-basiert. Ein Item kann mehrere Slots belegen.                                                                             |
-| `material`        | string   | – (Pflicht) | Bukkit/Minecraft-Material, z.B. `minecraft:lime_dye`.                                                                                          |
-| `amount`          | int      | 1           | Stackgröße.                                                                                                                                    |
-| `name`            | string   | –           | MiniMessage.                                                                                                                                   |
-| `lore`            | string[] | –           | Jede Zeile MiniMessage.                                                                                                                        |
-| `customModelData` | int      | –           |                                                                                                                                                |
-| `glint`           | bool     | –           | Enchant-Glint erzwingen (`true`) oder unterdrücken (`false`). Ideal für Rahmen-Items.                                                          |
-| `hideTooltip`     | bool     | `false`     | Blendet den Hover-Tooltip aus. Für dekorative Items, damit keine leere Box erscheint.                                                          |
-| `hideAttributes`  | bool     | `true`      | Blendet die Attribut-Zeilen von Waffen und Rüstung (Schaden, Angriffstempo, Rüstung) im Tooltip aus. `false` zeigt sie wie im Spiel. |
-| `skin`            | string   | –           | Nur für `minecraft:player_head`. Textur-Hash (64 Hex-Zeichen) oder `http://textures.minecraft.net/texture/<hash>`. Andere Materialien: Fehler. |
-| `locked`          | bool     | `true`      | `false` = Spieler darf das Item aus dem Slot nehmen.                                                                                           |
-| `action`          | string   | –           | `close`, `next-page`, `prev-page` (nur paginiert), `open:<gui-id>`, `sound:<name>[:<lautstärke>:<tonhöhe>]` (z. B. `sound:entity.experience_orb.pickup:0.8:1.2`, Tonhöhe 0,5–2), `message:<text>` (MiniMessage, `{token}` möglich). Eigene Aktionen per `registerAction("prefix:", …)` in Java. |
+| Field             | Type     | Default     | Description                                                                                                                                                                                                                    |
+|-------------------|----------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `key`             | string   | –           | Stable ID. Required if the item has click logic or is a navigation button. Without a `key` the item is decoration only.                                                                                                        |
+| `slots`           | int[]    | – (required)| Inventory slots, 0-based. An item can occupy several slots.                                                                                                                                                                    |
+| `material`        | string   | – (required)| Bukkit/Minecraft material, e.g. `minecraft:lime_dye`.                                                                                                                                                                          |
+| `amount`          | int      | 1           | Stack size.                                                                                                                                                                                                                    |
+| `name`            | string   | –           | MiniMessage. Supports `{token}` placeholders.                                                                                                                                                                                  |
+| `lore`            | string[] | –           | One MiniMessage entry per line. Supports `{token}` placeholders.                                                                                                                                                               |
+| `customModelData` | int      | –           | Custom model data for resource packs.                                                                                                                                                                                          |
+| `glint`           | bool     | –           | Force the enchantment glint (`true`) or suppress it (`false`). Useful for frame items.                                                                                                                                         |
+| `hideTooltip`     | bool     | `false`     | Hides the hover tooltip. For decorative items, so no empty box appears.                                                                                                                                                        |
+| `hideAttributes`  | bool     | `true`      | Hides the attribute lines of weapons and armor (damage, attack speed, armor) in the tooltip. `false` shows them as in the game.                                                                                                 |
+| `skin`            | string   | –           | Only for `minecraft:player_head`. Texture hash (64 hex characters) or `http://textures.minecraft.net/texture/<hash>`. Error for other materials.                                                                              |
+| `locked`          | bool     | `true`      | `false` lets the player take the item out of its slot.                                                                                                                                                                         |
+| `action`          | string   | –           | `close`, `next-page`, `prev-page` (paginated only), `open:<gui-id>`, `sound:<name>[:<volume>:<pitch>]` (e.g. `sound:entity.experience_orb.pickup:0.8:1.2`, pitch 0.5 to 2), `message:<text>` (MiniMessage, `{token}` allowed). Custom actions via `registerAction("prefix:", …)` in Java. |
 
-## Paginierung (`content`)
+## Pagination (`content`)
 
-| Feld        | Typ    | Default     | Beschreibung                                                                                                                                                                                     |
-|-------------|--------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `slots`     | int[]  | – (Pflicht) | Slots, in denen die Laufzeit-Inhalte erscheinen. Dürfen sich mit keinem festen Item überschneiden.                                                                                               |
-| `fill`      | string | `"empty"`   | `"empty"` lässt die ungenutzten Content-Slots frei, `"filler"` füllt sie mit dem Rahmen-Item aus `filler`.                                                                                       |
-| `filler`    | string | –           | `key` eines festen Rahmen-Items. Wird auf Seiten mit ausgeblendetem Prev/Next an deren Stelle gezeigt und bei `fill: "filler"` in ungenutzte Content-Slots gesetzt.                              |
-| `navOnEdge` | string | `"hide"`    | Was auf der ersten/letzten Seite mit Prev/Next passiert: `"hide"` ersetzt den Button durch das Rahmen-Item aus `filler` (ohne `filler` bleibt der Slot leer), `"keep"` zeigt den Button inaktiv. |
-| `nav`       | object | –           | `{ "prev": "<key>", "next": "<key>" }`. Verweist auf feste Items mit diesen Keys.                                                                                                                |
+| Field       | Type   | Default      | Description                                                                                                                                                                                                       |
+|-------------|--------|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `slots`     | int[]  | – (required) | Slots where the runtime content appears. Must not overlap any fixed item.                                                                                                                                          |
+| `fill`      | string | `"empty"`    | `"empty"` leaves unused content slots free. `"filler"` fills them with the frame item from `filler`.                                                                                                              |
+| `filler`    | string | –            | `key` of a fixed frame item. Shown in place of the prev/next button on pages where it is hidden, and used for unused content slots when `fill: "filler"`.                                                         |
+| `navOnEdge` | string | `"hide"`     | What happens to prev/next on the first/last page: `"hide"` replaces the button with the frame item from `filler` (without `filler` the slot stays empty), `"keep"` shows the button as inactive.                  |
+| `nav`       | object | –            | `{ "prev": "<key>", "next": "<key>" }`. Points to fixed items with these keys.                                                                                                                                    |
 
-## Validierung
+## Validation
 
-Der Loader prüft beim Laden: `formatVersion`, `rows`, Slot-Bereiche, doppelte Keys, Überschneidungen von Content-Slots
-mit festen Items, und ob Nav-/Filler-Keys existieren. Fehler werfen eine `IllegalArgumentException` mit Klartext.
+On load, the loader checks: `formatVersion`, `rows`, slot ranges, duplicate keys, overlaps between content slots and fixed items, and whether the nav and filler keys exist. Errors throw an `IllegalArgumentException` with a plain message.
 
-## Versionierung
+## Versioning
 
-Breaking Changes erhöhen `formatVersion`. Der Loader lehnt unbekannte Versionen ab, statt still falsch zu rendern. Lite-
-und Premium-Editor schreiben dasselbe Schema.
+Breaking changes increase `formatVersion`. The loader rejects unknown versions instead of silently rendering them wrongly. Any editor or tool that writes this format must follow the same schema.
 
-## Platzhalter und Viewer-spezifische Items (nur Code)
+## Placeholders and per-viewer items (code only)
 
-Im Format steht `{token}` einfach als Text in `name` und `lore`. Der Code füllt die Werte pro Spieler:
+In the format, `{token}` is plain text in `name`, `title` and `lore`. The code fills in the values per player:
 
     gui.placeholder("balance", p -> String.valueOf(economy.getBalance(p)));
     gui.itemFor("profile", p -> buildProfileHead(p));
 
-Platzhalter-Werte werden als reiner Text eingesetzt, MiniMessage-Tags aus Spielerdaten werden also nicht interpretiert.
-Unbekannte Tokens bleiben stehen.
+Placeholder values are inserted as plain text, so MiniMessage tags in player data are not interpreted.
+Unknown tokens are left as they are.
 
-## Slot-Muster
+## Slot patterns
 
-`"slots": "border"` belegt den äußeren Rahmen der Kiste, `"slots": "empty"` alle Slots. Muster sind Hintergrund: Sie
-nehmen nur Slots, die noch frei sind und nicht zur Content-Area gehören. Feste Slot-Listen werden immer zuerst vergeben.
+`"slots": "border"` covers the outer frame of the chest, `"slots": "empty"` covers all slots. Patterns are background: they
+only take slots that are still free and do not belong to the content area. Explicit slot lists are always assigned first.

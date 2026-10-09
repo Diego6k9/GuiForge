@@ -93,16 +93,16 @@ public final class GuiForgePlugin extends JavaPlugin implements Listener {
                 continue;
             }
             gui.onClick(item.key, ctx -> ctx.player().sendMessage(Gui.text(
-                    "<gray>Klick: <white>" + ctx.key() + "</white> (Seite " + (ctx.page() + 1) + ")")));
+                    "<gray>Clicked: <white>" + ctx.key() + "</white> (page " + (ctx.page() + 1) + ")")));
         }
         if (def.content != null) {
             List<Object> samples = new ArrayList<>();
             for (int i = 1; i <= 40; i++) {
-                samples.add("Eintrag " + i);
+                samples.add("Entry " + i);
             }
             gui.setContents(samples, GuiForgePlugin::sampleItem)
                     .onContentClick((player, entry) -> player.sendMessage(
-                            Gui.text("<gray>Inhalt gewählt: <white>" + entry)));
+                            Gui.text("<gray>Selected: <white>" + entry)));
         }
         return gui;
     }
@@ -124,19 +124,19 @@ public final class GuiForgePlugin extends JavaPlugin implements Listener {
 
         if (player.isSneaking()) {
             reload();
-            player.sendMessage(Gui.text("<green>Neu geladen: " + loaded.size() + " GUI(s)."));
+            player.sendMessage(Gui.text("<green>Reloaded: " + loaded.size() + " GUI(s)."));
             showErrors(player);
             return;
         }
         if (loaded.isEmpty()) {
-            player.sendMessage(Gui.text("<red>Keine GUIs in plugins/GuiForge/gui/ gefunden."));
+            player.sendMessage(Gui.text("<red>No GUIs found in plugins/GuiForge/gui/."));
             showErrors(player);
             return;
         }
         int index = cursor;
         cursor = (cursor + 1) % loaded.size();
         Gui<Object> gui = loaded.get(index);
-        player.sendMessage(Gui.text("<gray>Öffne <white>" + gui.id() + "</white> ("
+        player.sendMessage(Gui.text("<gray>Opening <white>" + gui.id() + "</white> ("
                 + (index + 1) + "/" + loaded.size() + ")"));
         gui.open(player);
         showErrors(player);
@@ -144,7 +144,7 @@ public final class GuiForgePlugin extends JavaPlugin implements Listener {
 
     private void showErrors(Player player) {
         for (String error : loadErrors) {
-            player.sendMessage(Gui.text("<red>Fehler: " + MiniMessage.miniMessage().escapeTags(error)));
+            player.sendMessage(Gui.text("<red>Error: " + MiniMessage.miniMessage().escapeTags(error)));
         }
     }
 }
