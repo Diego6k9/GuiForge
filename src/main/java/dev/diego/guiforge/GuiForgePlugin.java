@@ -3,13 +3,6 @@ package dev.diego.guiforge;
 import dev.diego.guiforge.format.GuiDefinition;
 import dev.diego.guiforge.format.GuiLoader;
 import dev.diego.guiforge.format.ItemDefinition;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -21,6 +14,14 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Test harness for custom GUIs. Put GUI JSON files into plugins/GuiForge/gui/ and test them in game:
@@ -34,11 +35,19 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class GuiForgePlugin extends JavaPlugin implements Listener {
 
     private static final String[] BUNDLED = {"shop-main.json", "shop-list.json"};
-
-    private GuiManager guis;
     private final List<Gui<Object>> loaded = new ArrayList<>();
     private final List<String> loadErrors = new ArrayList<>();
+    private GuiManager guis;
     private int cursor;
+
+    private static ItemStack sampleItem(Object entry) {
+        ItemStack stack = new ItemStack(Material.DIAMOND);
+        ItemMeta meta = stack.getItemMeta();
+        meta.displayName(Gui.text("<aqua>" + entry));
+        meta.lore(List.of(Gui.text("<gray>Beispiel-Inhalt")));
+        stack.setItemMeta(meta);
+        return stack;
+    }
 
     @Override
     public void onEnable() {
@@ -137,14 +146,5 @@ public final class GuiForgePlugin extends JavaPlugin implements Listener {
         for (String error : loadErrors) {
             player.sendMessage(Gui.text("<red>Fehler: " + MiniMessage.miniMessage().escapeTags(error)));
         }
-    }
-
-    private static ItemStack sampleItem(Object entry) {
-        ItemStack stack = new ItemStack(Material.DIAMOND);
-        ItemMeta meta = stack.getItemMeta();
-        meta.displayName(Gui.text("<aqua>" + entry));
-        meta.lore(List.of(Gui.text("<gray>Beispiel-Inhalt")));
-        stack.setItemMeta(meta);
-        return stack;
     }
 }

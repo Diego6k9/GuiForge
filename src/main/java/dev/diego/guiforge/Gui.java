@@ -3,23 +3,26 @@ package dev.diego.guiforge;
 import dev.diego.guiforge.format.ContentDefinition;
 import dev.diego.guiforge.format.GuiDefinition;
 import dev.diego.guiforge.format.ItemDefinition;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import dev.diego.guiforge.format.SkinTexture;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
+
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.bukkit.Material;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 /**
  * A GUI template loaded from a definition. Holds handlers, placeholders and (for paginated GUIs) the content.
@@ -31,9 +34,6 @@ public final class Gui<T> {
 
     private static final MiniMessage MINI = MiniMessage.miniMessage();
     private static final Pattern TOKEN = Pattern.compile("\\{([A-Za-z0-9_.\\-]+)\\}");
-
-    record FixedItem(ItemDefinition def, ItemStack template) {}
-
     private final GuiManager manager;
     private final GuiDefinition definition;
     private final List<FixedItem> fixedItems = new ArrayList<>();
@@ -44,7 +44,6 @@ public final class Gui<T> {
     private List<T> contents = List.of();
     private Function<T, ItemStack> renderer;
     private BiConsumer<Player, T> contentClickHandler;
-
     Gui(GuiManager manager, GuiDefinition definition) {
         this.manager = manager;
         this.definition = definition;
@@ -57,7 +56,41 @@ public final class Gui<T> {
         }
     }
 
-    /** Binds a click handler to the item with the given key. Fails fast on unknown keys. */
+    /**
+     * Converts MiniMessage to a component without Minecraft's default italics for names and lore.
+     */
+    public static Component text(String miniMessage) {
+        return MINI.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
+    }
+
+    private static boolean hasTokens(ItemDefinition def) {
+        if (def.name != null && TOKEN.matcher(def.name).find()) {
+            return true;
+        }
+        return def.lore != null && def.lore.stream().anyMatch(line -> TOKEN.matcher(line).find());
+    }
+
+    /**
+     * Builds a profile that only carries the texture URL, so no session-server lookup happens.
+     * The UUID comes from the hash, so equal skins produce equal profiles and stack together.
+     */
+    private static com.destroystokyo.paper.profile.PlayerProfile skinProfile(String skin) {
+        String hash = SkinTexture.hashOf(skin);
+        // Paper's SkullMeta takes its own PlayerProfile type; Bukkit.createProfile hands back the Paper
+        // implementation, so the cast only narrows the static type.
+        Object created = Bukkit.createProfile(UUID.nameUUIDFromBytes(hash.getBytes(StandardCharsets.UTF_8)), null);
+        com.destroystokyo.paper.profile.PlayerProfile profile = (com.destroystokyo.paper.profile.PlayerProfile) created;
+        try {
+            profile.getTextures().setSkin(URI.create(SkinTexture.urlOf(hash)).toURL());
+        } catch (MalformedURLException e) {
+            throw new IllegalStateException("Invalid skin URL for hash " + hash, e);
+        }
+        return profile;
+    }
+
+    /**
+     * Binds a click handler to the item with the given key. Fails fast on unknown keys.
+     */
     public Gui<T> onClick(String key, Consumer<ClickContext> handler) {
         requireKey(key);
         handlers.put(key, handler);
@@ -83,7 +116,9 @@ public final class Gui<T> {
         return this;
     }
 
-    /** Sets the paginated content. Requires a {@code content} block in the definition. */
+    /**
+     * Sets the paginated content. Requires a {@code content} block in the definition.
+     */
     public Gui<T> setContents(List<T> items, Function<T, ItemStack> renderer) {
         if (definition.content == null) {
             throw new IllegalStateException(
@@ -94,24 +129,23 @@ public final class Gui<T> {
         return this;
     }
 
-    /** Handles clicks on a content item, receiving the backing object instead of a slot number. */
+    /**
+     * Handles clicks on a content item, receiving the backing object instead of a slot number.
+     */
     public Gui<T> onContentClick(BiConsumer<Player, T> handler) {
         this.contentClickHandler = handler;
         return this;
     }
 
-    /** Opens this GUI for a player with fresh state (page 0). */
+    /**
+     * Opens this GUI for a player with fresh state (page 0).
+     */
     public void open(Player player) {
         new GuiSession(this, manager, player).open();
     }
 
     public String id() {
         return definition.id;
-    }
-
-    /** Converts MiniMessage to a component without Minecraft's default italics for names and lore. */
-    public static Component text(String miniMessage) {
-        return MINI.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
     }
 
     GuiDefinition definition() {
@@ -144,7 +178,9 @@ public final class Gui<T> {
         return contents;
     }
 
-    /** The stack a viewer sees for a fixed item: custom renderer, then placeholders, then the cached template. */
+    /**
+     * The stack a viewer sees for a fixed item: custom renderer, then placeholders, then the cached template.
+     */
     ItemStack stackFor(FixedItem fixed, Player viewer) {
         ItemDefinition def = fixed.def();
         if (def.key != null) {
@@ -187,13 +223,6 @@ public final class Gui<T> {
         }
     }
 
-    private static boolean hasTokens(ItemDefinition def) {
-        if (def.name != null && TOKEN.matcher(def.name).find()) {
-            return true;
-        }
-        return def.lore != null && def.lore.stream().anyMatch(line -> TOKEN.matcher(line).find());
-    }
-
     private ItemStack buildStack(ItemDefinition item, Player viewer) {
         Material material = Material.matchMaterial(item.material);
         if (material == null) {
@@ -218,6 +247,9 @@ public final class Gui<T> {
             if (item.hideTooltip != null) {
                 meta.setHideTooltip(item.hideTooltip);
             }
+            if (item.skin != null && meta instanceof SkullMeta skull) {
+                skull.setPlayerProfile(skinProfile(item.skin));
+            }
             stack.setItemMeta(meta);
         }
         return stack;
@@ -238,5 +270,8 @@ public final class Gui<T> {
         }
         matcher.appendTail(out);
         return out.toString();
+    }
+
+    record FixedItem(ItemDefinition def, ItemStack template) {
     }
 }
