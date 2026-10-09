@@ -3,13 +3,6 @@ package dev.diego.guiforge;
 import dev.diego.guiforge.format.ContentDefinition;
 import dev.diego.guiforge.format.GuiDefinition;
 import dev.diego.guiforge.format.ItemDefinition;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -17,6 +10,14 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * A GUI template loaded from a definition. Holds handlers and (for paginated GUIs) the content list.
@@ -27,9 +28,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 public final class Gui<T> {
 
     private static final MiniMessage MINI = MiniMessage.miniMessage();
-
-    record FixedItem(ItemDefinition def, ItemStack template) {}
-
     private final GuiManager manager;
     private final GuiDefinition definition;
     private final List<FixedItem> fixedItems = new ArrayList<>();
@@ -38,7 +36,6 @@ public final class Gui<T> {
     private List<T> contents = List.of();
     private Function<T, ItemStack> renderer;
     private BiConsumer<Player, T> contentClickHandler;
-
     Gui(GuiManager manager, GuiDefinition definition) {
         this.manager = manager;
         this.definition = definition;
@@ -51,7 +48,45 @@ public final class Gui<T> {
         }
     }
 
-    /** Binds a click handler to the item with the given key. Fails fast on unknown keys. */
+    /**
+     * Parses MiniMessage and turns off Minecraft's default italics for names and lore.
+     */
+    public static Component text(String miniMessage) {
+        return MINI.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
+    }
+
+    static ItemStack buildStack(ItemDefinition item) {
+        Material material = Material.matchMaterial(item.material);
+        if (material == null) {
+            throw new IllegalArgumentException("Unknown material '" + item.material + "' in item "
+                    + (item.key != null ? "'" + item.key + "'" : "(no key)"));
+        }
+        ItemStack stack = new ItemStack(material, item.amount == null ? 1 : item.amount);
+        ItemMeta meta = stack.getItemMeta();
+        if (meta != null) {
+            if (item.name != null) {
+                meta.displayName(text(item.name));
+            }
+            if (item.lore != null && !item.lore.isEmpty()) {
+                meta.lore(item.lore.stream().map(Gui::text).toList());
+            }
+            if (item.customModelData != null) {
+                meta.setCustomModelData(item.customModelData);
+            }
+            if (item.glint != null) {
+                meta.setEnchantmentGlintOverride(item.glint);
+            }
+            if (item.hideTooltip != null) {
+                meta.setHideTooltip(item.hideTooltip);
+            }
+            stack.setItemMeta(meta);
+        }
+        return stack;
+    }
+
+    /**
+     * Binds a click handler to the item with the given key. Fails fast on unknown keys.
+     */
     public Gui<T> onClick(String key, Consumer<ClickContext> handler) {
         if (!fixedByKey.containsKey(key)) {
             throw new IllegalArgumentException("GUI '" + definition.id + "' has no item with key '" + key + "'");
@@ -60,7 +95,9 @@ public final class Gui<T> {
         return this;
     }
 
-    /** Sets the paginated content. Requires a {@code content} block in the definition. */
+    /**
+     * Sets the paginated content. Requires a {@code content} block in the definition.
+     */
     public Gui<T> setContents(List<T> items, Function<T, ItemStack> renderer) {
         if (definition.content == null) {
             throw new IllegalStateException(
@@ -71,13 +108,17 @@ public final class Gui<T> {
         return this;
     }
 
-    /** Handles clicks on a content item, receiving the backing object instead of a slot number. */
+    /**
+     * Handles clicks on a content item, receiving the backing object instead of a slot number.
+     */
     public Gui<T> onContentClick(BiConsumer<Player, T> handler) {
         this.contentClickHandler = handler;
         return this;
     }
 
-    /** Opens this GUI for a player with fresh state (page 0). */
+    /**
+     * Opens this GUI for a player with fresh state (page 0).
+     */
     public void open(Player player) {
         new GuiSession(this, manager, player).open();
     }
@@ -138,37 +179,6 @@ public final class Gui<T> {
         }
     }
 
-    /** Parses MiniMessage and turns off Minecraft's default italics for names and lore. */
-    public static Component text(String miniMessage) {
-        return MINI.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
-    }
-
-    static ItemStack buildStack(ItemDefinition item) {
-        Material material = Material.matchMaterial(item.material);
-        if (material == null) {
-            throw new IllegalArgumentException("Unknown material '" + item.material + "' in item "
-                    + (item.key != null ? "'" + item.key + "'" : "(no key)"));
-        }
-        ItemStack stack = new ItemStack(material, item.amount == null ? 1 : item.amount);
-        ItemMeta meta = stack.getItemMeta();
-        if (meta != null) {
-            if (item.name != null) {
-                meta.displayName(text(item.name));
-            }
-            if (item.lore != null && !item.lore.isEmpty()) {
-                meta.lore(item.lore.stream().map(Gui::text).toList());
-            }
-            if (item.customModelData != null) {
-                meta.setCustomModelData(item.customModelData);
-            }
-            if (item.glint != null) {
-                meta.setEnchantmentGlintOverride(item.glint);
-            }
-            if (item.hideTooltip != null) {
-                meta.setHideTooltip(item.hideTooltip);
-            }
-            stack.setItemMeta(meta);
-        }
-        return stack;
+    record FixedItem(ItemDefinition def, ItemStack template) {
     }
 }

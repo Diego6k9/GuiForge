@@ -14,7 +14,8 @@ The shaded jar lands in `target/`. To write it straight into a Paper server's `p
 
     mvn clean package -Dpaper.plugins.dir="C:\Users\<you>\Documents\MC\Paper Servers\Paper Server 26.3\plugins"
 
-To make this permanent for your machine, add a profile to `~/.m2/settings.xml` (on Windows: `C:\Users\<you>\.m2\settings.xml`):
+To make this permanent for your machine, add a profile to `~/.m2/settings.xml` (on Windows:
+`C:\Users\<you>\.m2\settings.xml`):
 
     <settings>
       <profiles>

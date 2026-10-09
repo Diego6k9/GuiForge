@@ -3,9 +3,6 @@ package dev.diego.guiforge;
 import dev.diego.guiforge.format.ContentDefinition;
 import dev.diego.guiforge.format.GuiDefinition;
 import dev.diego.guiforge.format.ItemDefinition;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -14,7 +11,13 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.jspecify.annotations.NonNull;
 
-/** One opened inventory for one viewer. Owns the page state and the slot-to-item mapping. */
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * One opened inventory for one viewer. Owns the page state and the slot-to-item mapping.
+ */
 final class GuiSession implements InventoryHolder {
 
     private static final MiniMessage MINI = MiniMessage.miniMessage();

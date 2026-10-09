@@ -2,7 +2,9 @@ package dev.diego.guiforge.format;
 
 import java.util.List;
 
-/** A fixed item inside a GUI. Null means "not set"; defaults are applied at use site. */
+/**
+ * A fixed item inside a GUI. Null means "not set"; defaults are applied at use site.
+ */
 public final class ItemDefinition {
     public String key;
     public int[] slots;

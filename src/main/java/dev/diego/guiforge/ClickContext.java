@@ -11,4 +11,5 @@ import org.bukkit.event.inventory.InventoryClickEvent;
  * @param key    the key of the clicked item
  * @param page   the current page (0 for non-paginated GUIs)
  */
-public record ClickContext(Player player, InventoryClickEvent event, String key, int page) {}
+public record ClickContext(Player player, InventoryClickEvent event, String key, int page) {
+}

@@ -2,24 +2,23 @@ package dev.diego.guiforge.format;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.StringReader;
+
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
-/** Parses and validates GUI definitions (format v1). */
+/**
+ * Parses and validates GUI definitions (format v1).
+ */
 public final class GuiLoader {
 
     public static final int FORMAT_VERSION = 1;
     private static final Gson GSON = new Gson();
 
-    private GuiLoader() {}
+    private GuiLoader() {
+    }
 
     public static GuiDefinition parse(Reader reader) {
         GuiDefinition def;
@@ -48,7 +47,9 @@ public final class GuiLoader {
         }
     }
 
-    /** Validates a definition and normalizes defaults. Throws IllegalArgumentException on errors. */
+    /**
+     * Validates a definition and normalizes defaults. Throws IllegalArgumentException on errors.
+     */
     public static void validate(GuiDefinition def) {
         require(def.formatVersion == FORMAT_VERSION,
                 "unsupported formatVersion " + def.formatVersion + " (expected " + FORMAT_VERSION + ")");
