@@ -3,6 +3,9 @@ package dev.diego.guiforge;
 import dev.diego.guiforge.format.ContentDefinition;
 import dev.diego.guiforge.format.GuiDefinition;
 import dev.diego.guiforge.format.ItemDefinition;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -11,13 +14,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.jspecify.annotations.NonNull;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-/**
- * One opened inventory for one viewer. Owns the page state and the slot-to-item mapping.
- */
+/** One opened inventory for one viewer. Owns the page state and the slot-to-item mapping. */
 final class GuiSession implements InventoryHolder {
 
     private static final MiniMessage MINI = MiniMessage.miniMessage();
@@ -109,15 +106,24 @@ final class GuiSession implements InventoryHolder {
 
         for (Gui.FixedItem fixed : gui.fixedItems()) {
             if (isHiddenNav(fixed.def(), content, pages)) {
+                // Hidden nav slots show the frame item instead of air, so the border stays closed.
+                Gui.FixedItem frame = frameItem(content);
+                if (frame != null) {
+                    place(frame, fixed.def().slots);
+                }
                 continue;
             }
-            for (int slot : fixed.def().slots) {
-                inventory.setItem(slot, fixed.template().clone());
-                definitionBySlot.put(slot, fixed.def());
-            }
+            place(fixed, fixed.def().slots);
         }
         if (content != null) {
             renderContent(content);
+        }
+    }
+
+    private void place(Gui.FixedItem item, int[] slots) {
+        for (int slot : slots) {
+            inventory.setItem(slot, item.template().clone());
+            definitionBySlot.put(slot, item.def());
         }
     }
 
@@ -125,9 +131,8 @@ final class GuiSession implements InventoryHolder {
         int[] slots = gui.contentSlots();
         int perPage = slots.length;
         List<?> items = gui.contents();
-        Gui.FixedItem filler = "filler".equals(content.fill) && content.filler != null
-                ? gui.fixedByKey(content.filler)
-                : null;
+        // Only "fill: filler" pads the unused content slots. The default "empty" leaves them open.
+        Gui.FixedItem padding = "filler".equals(content.fill) ? frameItem(content) : null;
 
         for (int i = 0; i < perPage; i++) {
             int index = page * perPage + i;
@@ -135,10 +140,14 @@ final class GuiSession implements InventoryHolder {
             if (index < items.size()) {
                 inventory.setItem(slot, gui.renderContent(items.get(index)));
                 contentIndexBySlot.put(slot, index);
-            } else if (filler != null) {
-                inventory.setItem(slot, filler.template().clone());
+            } else if (padding != null) {
+                inventory.setItem(slot, padding.template().clone());
             }
         }
+    }
+
+    private Gui.FixedItem frameItem(ContentDefinition content) {
+        return content == null || content.filler == null ? null : gui.fixedByKey(content.filler);
     }
 
     private boolean isHiddenNav(ItemDefinition item, ContentDefinition content, int pages) {

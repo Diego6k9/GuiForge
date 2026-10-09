@@ -35,9 +35,9 @@ Layout-Daten für GUIs. Verhalten (Klick-Logik) gehört **nicht** ins Format, so
 | Feld        | Typ    | Default     | Beschreibung                                                                                               |
 |-------------|--------|-------------|------------------------------------------------------------------------------------------------------------|
 | `slots`     | int[]  | – (Pflicht) | Slots, in denen die Laufzeit-Inhalte erscheinen. Dürfen sich mit keinem festen Item überschneiden.         |
-| `fill`      | string | `"empty"`   | `"empty"` lässt leere Slots frei, `"filler"` füllt sie mit `filler`.                                       |
-| `filler`    | string | –           | `key` eines festen Items, das als Füllung dient (Pflicht bei `fill: "filler"`).                            |
-| `navOnEdge` | string | `"hide"`    | Was auf der ersten/letzten Seite mit Prev/Next passiert: `"hide"` blendet aus, `"keep"` zeigt sie inaktiv. |
+| `fill` | string | `"empty"` | `"empty"` lässt die ungenutzten Content-Slots frei, `"filler"` füllt sie mit dem Rahmen-Item aus `filler`. |
+| `filler` | string | – | `key` eines festen Rahmen-Items. Wird auf Seiten mit ausgeblendetem Prev/Next an deren Stelle gezeigt und bei `fill: "filler"` in ungenutzte Content-Slots gesetzt. |
+| `navOnEdge` | string | `"hide"` | Was auf der ersten/letzten Seite mit Prev/Next passiert: `"hide"` ersetzt den Button durch das Rahmen-Item aus `filler` (ohne `filler` bleibt der Slot leer), `"keep"` zeigt den Button inaktiv. |
 | `nav`       | object | –           | `{ "prev": "<key>", "next": "<key>" }`. Verweist auf feste Items mit diesen Keys.                          |
 
 ## Validierung
