@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -136,6 +138,11 @@ public final class Gui<T> {
         }
     }
 
+    /** Parses MiniMessage and turns off Minecraft's default italics for names and lore. */
+    public static Component text(String miniMessage) {
+        return MINI.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
+    }
+
     static ItemStack buildStack(ItemDefinition item) {
         Material material = Material.matchMaterial(item.material);
         if (material == null) {
@@ -146,10 +153,10 @@ public final class Gui<T> {
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
             if (item.name != null) {
-                meta.displayName(MINI.deserialize(item.name));
+                meta.displayName(text(item.name));
             }
             if (item.lore != null && !item.lore.isEmpty()) {
-                meta.lore(item.lore.stream().map(MINI::deserialize).toList());
+                meta.lore(item.lore.stream().map(Gui::text).toList());
             }
             if (item.customModelData != null) {
                 meta.setCustomModelData(item.customModelData);

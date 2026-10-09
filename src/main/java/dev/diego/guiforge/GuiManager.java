@@ -21,7 +21,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class GuiManager {
 
     private final JavaPlugin plugin;
-    private final Map<String, Gui<Object>> guis = new HashMap<>();
+    private final Map<String, Gui<?>> guis = new HashMap<>();
 
     public GuiManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -29,25 +29,25 @@ public final class GuiManager {
     }
 
     /** Loads a GUI definition from a plugin resource, e.g. {@code "gui/shop-main.json"}. */
-    public Gui<Object> load(String resourcePath) throws IOException {
+    public <T> Gui<T> load(String resourcePath) throws IOException {
         return create(GuiLoader.loadResource(plugin.getClass().getClassLoader(), resourcePath));
     }
 
     /** Creates a GUI from a parsed definition and registers it under its id (for {@code open:<id>}). */
-    public Gui<Object> create(GuiDefinition definition) {
+    public <T> Gui<T> create(GuiDefinition definition) {
         GuiLoader.validate(definition);
-        Gui<Object> gui = new Gui<>(this, definition);
+        Gui<T> gui = new Gui<>(this, definition);
         guis.put(definition.id, gui);
         return gui;
     }
 
-    public Optional<Gui<Object>> find(String id) {
+    public Optional<Gui<?>> find(String id) {
         return Optional.ofNullable(guis.get(id));
     }
 
     /** Opens a registered GUI by id. Logs a warning and does nothing if the id is unknown. */
     public void open(Player player, String id) {
-        Gui<Object> gui = guis.get(id);
+        Gui<?> gui = guis.get(id);
         if (gui == null) {
             logger().warning("Cannot open GUI '" + id + "': not registered");
             return;
