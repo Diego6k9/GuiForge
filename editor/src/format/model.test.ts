@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyGui, fromFormat, newItem, resolveSlots, toFormat, validate, type EditorGui } from './model';
+import { emptyGui, fromFormat, newItem, problems, resolveSlots, roleOf, toFormat, validate, type EditorGui } from './model';
 
 function gui(partial: Partial<EditorGui>): EditorGui {
   return { ...emptyGui(), ...partial };
@@ -71,5 +71,24 @@ describe('format round trip', () => {
 
   it('refuses files with an unknown format version', () => {
     expect(() => fromFormat({ formatVersion: 2 })).toThrow();
+  });
+});
+
+describe('problems and roles', () => {
+  it('points problems at the item that causes them', () => {
+    const a = { ...newItem(emptyGui()), key: 'a', slots: [4] };
+    const b = { ...newItem(emptyGui()), key: 'b', slots: [4] };
+    const p = problems(gui({ rows: 3, items: [a, b] }));
+    expect(p.find((x) => x.message.includes('mehreren Items'))?.itemId).toBe(b.id);
+  });
+
+  it('classifies frame, button and plain items', () => {
+    const frame = { ...newItem(emptyGui()), key: 'frame', pattern: 'border' as const };
+    const button = { ...newItem(emptyGui()), key: 'next', slots: [52], action: 'next-page' };
+    const plain = { ...newItem(emptyGui()), key: 'plain', slots: [0] };
+    const g = gui({ rows: 6, items: [frame, button, plain] });
+    expect(roleOf(frame, g)).toBe('frame');
+    expect(roleOf(button, g)).toBe('button');
+    expect(roleOf(plain, g)).toBe('item');
   });
 });

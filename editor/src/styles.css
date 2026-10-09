@@ -117,3 +117,15 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 
 .btn.on-panel { border-color: var(--accent); }
 .panel > .btn { width: 100%; justify-content: center; margin-bottom: 14px; }
+
+/* Editor additions */
+.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
+.tabs button { background: #22252d; color: var(--muted); border: none; padding: 6px 14px; cursor: pointer; font: inherit; }
+.tabs button.on { background: var(--accent); color: #fff; }
+.tabs button:disabled { opacity: 0.4; cursor: not-allowed; }
+.mc-slot.error { outline: 2px solid var(--danger); outline-offset: -2px; }
+.mc-slot.in-drag { outline: 2px solid #ffd60a; outline-offset: -2px; filter: brightness(1.25); }
+.badge { background: var(--danger); color: #fff; border-radius: 999px; width: 16px; height: 16px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; }
+.legend { display: flex; gap: 12px; margin-top: 14px; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.link { background: none; border: none; color: #ffb4b6; text-align: left; padding: 0; cursor: pointer; font: inherit; text-decoration: underline; }

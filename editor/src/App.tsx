@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useReducer, useState, type ChangeEvent } from 'react';
 import {
-  emptyGui, fromFormat, newItem, resolveSlots, toFormat, validate,
+  emptyGui, fromFormat, newItem, problems, resolveSlots, roleOf, toFormat, ROLE_COLORS,
   type EditorGui, type EditorItem,
 } from './format/model';
+import { historyReducer, type History } from './history';
 import { Grid, type CellView } from './components/Grid';
 import { ItemPanel } from './components/ItemPanel';
 import { GuiPanel } from './components/GuiPanel';
@@ -20,12 +21,6 @@ function loadInitial(): EditorGui {
   return emptyGui();
 }
 
-function colorFor(key: string): string {
-  let h = 0;
-  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) % 360;
-  return `hsl(${h} 55% 38%)`;
-}
-
 function shortMaterial(material: string): string {
   return material
     .replace('minecraft:', '')
@@ -36,68 +31,96 @@ function shortMaterial(material: string): string {
     .toUpperCase();
 }
 
+/** All slots in the rectangle spanned by two grid indices. */
+function rectSlots(a: number, b: number): number[] {
+  const r1 = Math.min(Math.floor(a / 9), Math.floor(b / 9));
+  const r2 = Math.max(Math.floor(a / 9), Math.floor(b / 9));
+  const c1 = Math.min(a % 9, b % 9);
+  const c2 = Math.max(a % 9, b % 9);
+  const out: number[] = [];
+  for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) out.push(r * 9 + c);
+  return out;
+}
+
+type Tool = 'assign' | 'content';
+type Inspector = 'gui' | 'item';
+
 export default function App() {
-  const [gui, setGui] = useState<EditorGui>(loadInitial);
+  const [history, dispatch] = useReducer(historyReducer, undefined, (): History => ({
+    past: [], present: loadInitial(), future: [],
+  }));
+  const gui = history.present;
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mode, setMode] = useState<'select' | 'content'>('select');
+  const [inspector, setInspector] = useState<Inspector>('gui');
+  const [tool, setTool] = useState<Tool>('assign');
+  const [drag, setDrag] = useState<{ start: number; current: number } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toFormat(gui)));
-    } catch {
-      // Storage unavailable: the editor keeps working, just without autosave.
-    }
-  }, [gui]);
-
+  const selected = selectedId ? gui.items.find((i) => i.id === selectedId) ?? null : null;
   const resolved = useMemo(() => resolveSlots(gui), [gui]);
-  const errors = useMemo(() => validate(gui), [gui]);
+  const found = useMemo(() => problems(gui), [gui]);
+  const errorCount = found.length;
+  const errorItemIds = useMemo(() => new Set(found.flatMap((p) => (p.itemId ? [p.itemId] : []))), [found]);
   const itemById = useMemo(() => new Map(gui.items.map((i) => [i.id, i])), [gui.items]);
   const occupant = useMemo(() => {
     const map = new Map<number, string>();
     for (const [id, slots] of resolved) slots.forEach((s) => map.set(s, id));
     return map;
   }, [resolved]);
-  const selected = selectedId ? itemById.get(selectedId) ?? null : null;
   const contentSet = new Set(gui.paginated ? gui.contentSlots : []);
   const size = gui.rows * 9;
+  const dragSlots = drag ? new Set(rectSlots(drag.start, drag.current)) : new Set<number>();
 
-  const cells: CellView[] = Array.from({ length: size }, (_, slot) => {
-    const ownerId = occupant.get(slot);
-    const owner: EditorItem | undefined = ownerId ? itemById.get(ownerId) : undefined;
-    return {
-      slot,
-      label: owner ? shortMaterial(owner.material) : '',
-      color: owner ? colorFor(owner.key) : undefined,
-      title: owner ? `${owner.key} (Slot ${slot})` : `Slot ${slot}`,
-      selected: !!owner && owner.id === selectedId,
-      content: contentSet.has(slot),
-      pattern: !!owner?.pattern,
-    };
-  });
+  // Autosave the present state; storage failures never block editing.
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toFormat(gui)));
+    } catch {
+      // Storage unavailable: editing still works, just without autosave.
+    }
+  }, [gui]);
 
-  function commit(next: EditorGui) {
-    setGui(next);
+  function commit(next: EditorGui, coalesceKey?: string) {
+    dispatch({ type: 'set', next, coalesceKey, at: Date.now() });
   }
+
+  function select(id: string | null) {
+    setSelectedId(id);
+    setInspector(id ? 'item' : 'gui');
+  }
+
+  // Keyboard: undo/redo, unless the user is typing in a field (then the browser handles it).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      if (e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        dispatch({ type: 'undo' });
+      } else if ((e.key.toLowerCase() === 'z' && e.shiftKey) || e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        dispatch({ type: 'redo' });
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   function patchGui(patch: Partial<EditorGui>) {
     const next = { ...gui, ...patch };
     if (patch.rows !== undefined && patch.rows !== gui.rows) {
-      // Shrinking the grid drops slots that no longer exist.
-      const size = next.rows * 9;
-      next.items = next.items.map((i) => ({ ...i, slots: i.slots.filter((s) => s < size) }));
-      next.contentSlots = next.contentSlots.filter((s) => s < size);
+      const limit = next.rows * 9;
+      next.items = next.items.map((i) => ({ ...i, slots: i.slots.filter((s) => s < limit) }));
+      next.contentSlots = next.contentSlots.filter((s) => s < limit);
     }
-    commit(next);
+    commit(next, `gui:${Object.keys(patch).join(',')}`);
   }
 
   function patchItem(id: string, patch: Partial<EditorItem>) {
     const old = gui.items.find((i) => i.id === id);
-    let next: EditorGui = {
-      ...gui,
-      items: gui.items.map((i) => (i.id === id ? { ...i, ...patch } : i)),
-    };
-    // Keep references in sync when a key is renamed.
+    let next: EditorGui = { ...gui, items: gui.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) };
     if (old && patch.key !== undefined && patch.key !== old.key) {
       next = {
         ...next,
@@ -106,14 +129,14 @@ export default function App() {
         navNext: next.navNext === old.key ? patch.key : next.navNext,
       };
     }
-    commit(next);
+    commit(next, `item:${id}:${Object.keys(patch).join(',')}`);
   }
 
   function addItem() {
     const item = newItem(gui);
     commit({ ...gui, items: [...gui.items, item] });
-    setSelectedId(item.id);
-    setMode('select');
+    select(item.id);
+    setTool('assign');
   }
 
   function removeItem(id: string) {
@@ -126,42 +149,68 @@ export default function App() {
       navPrev: gui.navPrev === item.key ? '' : gui.navPrev,
       navNext: gui.navNext === item.key ? '' : gui.navNext,
     });
-    setSelectedId(null);
+    select(null);
   }
 
-  function onCell(slot: number) {
-    if (mode === 'content') {
+  /** Applies the active tool to a set of slots. The first slot decides whether it adds or removes. */
+  function paint(slots: number[], first: number) {
+    const set = new Set(slots);
+    if (tool === 'content') {
       if (!gui.paginated) return;
-      const inContent = gui.contentSlots.includes(slot);
+      const remove = gui.contentSlots.includes(first);
+      const content = remove
+        ? gui.contentSlots.filter((s) => !set.has(s))
+        : [...new Set([...gui.contentSlots, ...slots])].sort((a, b) => a - b);
+      // A slot is either a fixed item or content, never both.
       commit({
         ...gui,
-        // A slot is either a fixed item or content, never both.
-        items: gui.items.map((i) => ({ ...i, slots: i.slots.filter((s) => s !== slot) })),
-        contentSlots: inContent
-          ? gui.contentSlots.filter((s) => s !== slot)
-          : [...gui.contentSlots, slot].sort((a, b) => a - b),
+        items: gui.items.map((i) => ({ ...i, slots: i.slots.filter((s) => !set.has(s)) })),
+        contentSlots: content,
       });
       return;
     }
     if (selected && !selected.pattern) {
-      const isMine = selected.slots.includes(slot);
+      const remove = selected.slots.includes(first);
       commit({
         ...gui,
         items: gui.items.map((i) => {
-          const without = i.slots.filter((s) => s !== slot);
+          const without = i.slots.filter((s) => !set.has(s));
           if (i.id !== selected.id) return { ...i, slots: without };
-          return { ...i, slots: isMine ? without : [...without, slot].sort((a, b) => a - b) };
+          const slotsNext = remove ? without : [...new Set([...without, ...slots])].sort((a, b) => a - b);
+          return { ...i, slots: slotsNext };
         }),
-        contentSlots: gui.contentSlots.filter((s) => s !== slot),
+        contentSlots: gui.contentSlots.filter((s) => !set.has(s)),
       });
+    }
+  }
+
+  function onCellDown(slot: number) {
+    const canPaint = tool === 'content' || (selected !== null && !selected.pattern);
+    if (canPaint) {
+      setDrag({ start: slot, current: slot });
       return;
     }
     const ownerId = occupant.get(slot);
-    if (ownerId) setSelectedId(ownerId);
+    if (ownerId) select(ownerId);
   }
 
+  function onCellEnter(slot: number) {
+    if (drag) setDrag({ ...drag, current: slot });
+  }
+
+  // Finish a paint stroke when the mouse button is released anywhere.
+  useEffect(() => {
+    if (!drag) return;
+    function finish() {
+      if (drag) paint(rectSlots(drag.start, drag.current), drag.start);
+      setDrag(null);
+    }
+    window.addEventListener('mouseup', finish);
+    return () => window.removeEventListener('mouseup', finish);
+  });
+
   function exportFile() {
-    if (errors.length) return;
+    if (errorCount) return;
     const blob = new Blob([JSON.stringify(toFormat(gui), null, 2) + '\n'], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -176,9 +225,8 @@ export default function App() {
     e.target.value = '';
     if (!file) return;
     try {
-      const json = JSON.parse(await file.text());
-      commit(fromFormat(json));
-      setSelectedId(null);
+      commit(fromFormat(JSON.parse(await file.text())));
+      select(null);
       setImportError(null);
     } catch (err) {
       setImportError(`Import fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
@@ -186,10 +234,32 @@ export default function App() {
   }
 
   function reset() {
-    if (!window.confirm('Die aktuelle GUI verwerfen und neu beginnen?')) return;
+    if (!window.confirm('Die aktuelle GUI verwerfen und neu beginnen? (Rückgängig ist danach über Strg+Z möglich.)')) return;
     commit(emptyGui());
-    setSelectedId(null);
+    select(null);
   }
+
+  const cells: CellView[] = Array.from({ length: size }, (_, slot) => {
+    const ownerId = occupant.get(slot);
+    const owner: EditorItem | undefined = ownerId ? itemById.get(ownerId) : undefined;
+    return {
+      slot,
+      label: owner ? shortMaterial(owner.material) : '',
+      color: owner ? ROLE_COLORS[roleOf(owner, gui)] : undefined,
+      title: owner ? `${owner.key} (Slot ${slot})` : `Slot ${slot}`,
+      selected: !!owner && owner.id === selectedId,
+      content: contentSet.has(slot),
+      pattern: !!owner?.pattern,
+      error: !!owner && errorItemIds.has(owner.id),
+      inDrag: dragSlots.has(slot),
+    };
+  });
+
+  const hint = tool === 'content'
+    ? 'Ziehen markiert einen Rechteckbereich als Content. Klick auf markierte Slots entfernt sie.'
+    : selected && !selected.pattern
+      ? `Ziehen weist „${selected.key}“ ein Rechteck zu. Klick auf eigene Slots entfernt sie.`
+      : 'Item in der Liste wählen oder ein Slot anklicken, dann zuweisen.';
 
   return (
     <div className="app">
@@ -197,12 +267,17 @@ export default function App() {
         <strong>GuiForge Editor</strong>
         <span className="muted">{gui.id} · {gui.rows} Zeilen{gui.paginated ? ' · paginiert' : ''}</span>
         <div className="spacer" />
+        <button type="button" className="btn" disabled={history.past.length === 0}
+          onClick={() => dispatch({ type: 'undo' })} title="Rückgängig (Strg+Z)">↶ Undo</button>
+        <button type="button" className="btn" disabled={history.future.length === 0}
+          onClick={() => dispatch({ type: 'redo' })} title="Wiederholen (Strg+Shift+Z)">↷ Redo</button>
         <label className="btn">
           Importieren
           <input type="file" accept=".json,application/json" hidden onChange={importFile} />
         </label>
-        <button type="button" className="btn primary" disabled={errors.length > 0} onClick={exportFile}>
-          Exportieren (.json)
+        <button type="button" className="btn primary" disabled={errorCount > 0} onClick={exportFile}
+          title={errorCount ? `${errorCount} Problem(e) beheben, dann exportieren` : 'Als Format-v1-JSON exportieren'}>
+          {errorCount ? `Exportieren (${errorCount} Fehler)` : 'Exportieren (.json)'}
         </button>
         <button type="button" className="btn" onClick={reset}>Neu</button>
       </header>
@@ -211,59 +286,53 @@ export default function App() {
 
       <main className="workspace">
         <aside className="panel">
-          <button type="button" className={selected ? 'btn' : 'btn on-panel'} onClick={() => setSelectedId(null)}>
-            GUI-Einstellungen
-          </button>
           <h3>Items</h3>
           <button type="button" className="btn" onClick={addItem}>+ Item</button>
           <ul className="itemlist">
             {gui.items.map((i) => (
               <li key={i.id}>
-                <button
-                  type="button"
-                  className={i.id === selectedId ? 'item on' : 'item'}
-                  onClick={() => { setSelectedId(i.id); setMode('select'); }}
-                >
-                  <span className="swatch" style={{ background: colorFor(i.key) }} />
+                <button type="button" className={i.id === selectedId ? 'item on' : 'item'} onClick={() => select(i.id)}>
+                  <span className="swatch" style={{ background: ROLE_COLORS[roleOf(i, gui)] }} />
                   <span className="item-key">{i.key || '(ohne Key)'}</span>
+                  {errorItemIds.has(i.id) && <span className="badge" title="Hat Probleme">!</span>}
                   <small>{i.pattern ?? `${i.slots.length} Slot${i.slots.length === 1 ? '' : 's'}`}</small>
                 </button>
               </li>
             ))}
           </ul>
+          <div className="legend">
+            <span><i style={{ background: ROLE_COLORS.frame }} /> Rahmen</span>
+            <span><i style={{ background: ROLE_COLORS.button }} /> Button</span>
+            <span><i style={{ background: ROLE_COLORS.item }} /> Item</span>
+          </div>
         </aside>
 
         <section className="center">
           <div className="toolbar">
             <div className="seg">
-              <button type="button" className={mode === 'select' ? 'on' : ''} onClick={() => setMode('select')}>
-                Slots zuweisen
+              <button type="button" className={tool === 'assign' ? 'on' : ''} onClick={() => setTool('assign')}>
+                Zuweisen
               </button>
-              <button
-                type="button"
-                className={mode === 'content' ? 'on' : ''}
-                disabled={!gui.paginated}
-                onClick={() => setMode('content')}
-                title={gui.paginated ? '' : 'Erst unter GUI-Einstellungen „Paginiert“ aktivieren'}
-              >
-                Content-Bereich malen
+              <button type="button" className={tool === 'content' ? 'on' : ''} disabled={!gui.paginated}
+                onClick={() => setTool('content')}
+                title={gui.paginated ? '' : 'Erst unter GUI „Paginiert“ aktivieren'}>
+                Content malen
               </button>
             </div>
-            <span className="muted hint">
-              {mode === 'content'
-                ? 'Klick markiert bzw. entfernt Content-Slots.'
-                : selected && !selected.pattern
-                  ? `Klicks fügen Slots zu „${selected.key}“ hinzu oder entfernen sie.`
-                  : 'Item auswählen, dann Slots im Raster anklicken.'}
-            </span>
+            <span className="muted hint">{hint}</span>
           </div>
 
-          <Grid cells={cells} onCell={onCell} />
+          <Grid cells={cells} onCellDown={onCellDown} onCellEnter={onCellEnter} />
           <Preview gui={gui} resolved={resolved} />
         </section>
 
         <aside className="panel">
-          {selected
+          <div className="tabs">
+            <button type="button" className={inspector === 'gui' ? 'on' : ''} onClick={() => setInspector('gui')}>GUI</button>
+            <button type="button" className={inspector === 'item' ? 'on' : ''} disabled={!selected}
+              onClick={() => setInspector('item')}>Item</button>
+          </div>
+          {inspector === 'item' && selected
             ? (
               <ItemPanel
                 item={selected}
@@ -277,11 +346,17 @@ export default function App() {
       </main>
 
       <footer className="validation">
-        {errors.length === 0
+        {errorCount === 0
           ? <span className="ok">✓ Export-bereit (Format v1)</span>
           : (
             <ul className="errors">
-              {errors.map((e) => <li key={e}>{e}</li>)}
+              {found.map((p) => (
+                <li key={p.message}>
+                  {p.itemId
+                    ? <button type="button" className="link" onClick={() => select(p.itemId!)}>{p.message}</button>
+                    : p.message}
+                </li>
+              ))}
             </ul>
           )}
       </footer>

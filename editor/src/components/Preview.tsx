@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { EditorGui, EditorItem } from '../format/model';
+import { ROLE_COLORS, roleOf, type EditorGui, type EditorItem } from '../format/model';
 
 const SAMPLE_COUNT = 30;
 
@@ -10,12 +10,6 @@ interface PreviewProps {
 
 function plain(text: string): string {
   return text.replace(/<[^>]*>/g, '');
-}
-
-function colorFor(key: string): string {
-  let h = 0;
-  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) % 360;
-  return `hsl(${h} 55% 38%)`;
 }
 
 interface Cell {
@@ -44,7 +38,7 @@ export function Preview({ gui, resolved }: PreviewProps) {
 
   const itemCell = (item: EditorItem): Cell => ({
     label: plain(item.name) || item.key,
-    color: colorFor(item.key),
+    color: ROLE_COLORS[roleOf(item, gui)],
     title: [item.key, ...item.lore.map(plain)].join('\n'),
   });
 

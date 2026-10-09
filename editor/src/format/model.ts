@@ -101,39 +101,69 @@ export function resolveSlots(gui: EditorGui): Map<string, number[]> {
   return result;
 }
 
-/** Returns human-readable problems. An empty list means the GUI exports to a valid format v1 file. */
-export function validate(gui: EditorGui): string[] {
-  const errors: string[] = [];
-  if (!gui.id.trim()) errors.push('Die GUI braucht eine ID.');
+export interface Problem {
+  message: string;
+  /** The item to jump to when the problem is clicked, if it belongs to one. */
+  itemId?: string;
+}
+
+/** Problems with the GUI. An empty list means it exports to a valid format v1 file. */
+export function problems(gui: EditorGui): Problem[] {
+  const out: Problem[] = [];
+  const add = (message: string, itemId?: string) => out.push({ message, itemId });
+  if (!gui.id.trim()) add('Die GUI braucht eine ID.');
   const keys = new Set<string>();
+  const firstByKey = new Map<string, EditorItem>();
   for (const item of gui.items) {
     const label = item.key ? `„${item.key}“` : '(ohne Key)';
-    if (!item.key.trim()) errors.push(`Ein Item hat keinen Key.`);
-    else if (keys.has(item.key)) errors.push(`Doppelter Key ${label}.`);
+    if (!item.key.trim()) add('Ein Item hat keinen Key.', item.id);
+    else if (keys.has(item.key)) add(`Doppelter Key ${label}.`, item.id);
     keys.add(item.key);
-    if (!item.material.trim()) errors.push(`Item ${label}: Material fehlt.`);
-    if (!item.pattern && item.slots.length === 0) errors.push(`Item ${label}: keine Slots gewählt.`);
+    if (item.key && !firstByKey.has(item.key)) firstByKey.set(item.key, item);
+    if (!item.material.trim()) add(`Item ${label}: Material fehlt.`, item.id);
+    if (!item.pattern && item.slots.length === 0) add(`Item ${label}: keine Slots gewählt.`, item.id);
   }
   const size = gui.rows * 9;
-  const seen = new Map<number, string>();
+  const seen = new Map<number, EditorItem>();
   for (const item of gui.items) {
     for (const s of item.slots) {
-      if (s < 0 || s >= size) errors.push(`Item „${item.key}“: Slot ${s} liegt außerhalb der Kiste.`);
-      if (seen.has(s)) errors.push(`Slot ${s} gehört zu mehreren Items („${seen.get(s)}“, „${item.key}“).`);
-      seen.set(s, item.key);
+      if (s < 0 || s >= size) add(`Item „${item.key}“: Slot ${s} liegt außerhalb der Kiste.`, item.id);
+      const other = seen.get(s);
+      if (other) add(`Slot ${s} gehört zu mehreren Items („${other.key}“, „${item.key}“).`, item.id);
+      seen.set(s, item);
     }
   }
   if (gui.paginated) {
-    if (gui.contentSlots.length === 0) errors.push('Paginiert, aber keine Content-Slots markiert.');
+    if (gui.contentSlots.length === 0) add('Paginiert, aber keine Content-Slots markiert.');
     for (const s of gui.contentSlots) {
-      if (seen.has(s)) errors.push(`Content-Slot ${s} überschneidet das Item „${seen.get(s)}“.`);
+      const other = seen.get(s);
+      if (other) add(`Content-Slot ${s} überschneidet das Item „${other.key}“.`, other.id);
     }
-    if (gui.fill === 'filler' && !keys.has(gui.filler)) errors.push('Füllung „filler“ braucht ein existierendes Rahmen-Item.');
-    if (gui.filler && !keys.has(gui.filler)) errors.push(`Rahmen-Item „${gui.filler}“ existiert nicht.`);
-    if (gui.navPrev && !keys.has(gui.navPrev)) errors.push(`Zurück-Button „${gui.navPrev}“ existiert nicht.`);
-    if (gui.navNext && !keys.has(gui.navNext)) errors.push(`Weiter-Button „${gui.navNext}“ existiert nicht.`);
+    if (gui.fill === 'filler' && !keys.has(gui.filler)) add('Füllung „filler“ braucht ein existierendes Rahmen-Item.');
+    if (gui.filler && !keys.has(gui.filler)) add(`Rahmen-Item „${gui.filler}“ existiert nicht.`);
+    if (gui.navPrev && !keys.has(gui.navPrev)) add(`Zurück-Button „${gui.navPrev}“ existiert nicht.`);
+    if (gui.navNext && !keys.has(gui.navNext)) add(`Weiter-Button „${gui.navNext}“ existiert nicht.`);
   }
-  return errors;
+  return out;
+}
+
+export function validate(gui: EditorGui): string[] {
+  return problems(gui).map((p) => p.message);
+}
+
+export type ItemRole = 'frame' | 'button' | 'item';
+
+export const ROLE_COLORS: Record<ItemRole, string> = {
+  frame: '#5d6470',
+  button: '#2f6fd6',
+  item: '#7a4fb0',
+};
+
+/** Frames are patterns or the filler; buttons have an action; everything else is an item. */
+export function roleOf(item: EditorItem, gui: EditorGui): ItemRole {
+  if (item.pattern || (gui.filler !== '' && item.key === gui.filler)) return 'frame';
+  if (item.action.trim()) return 'button';
+  return 'item';
 }
 
 export function toFormat(gui: EditorGui): Record<string, unknown> {
