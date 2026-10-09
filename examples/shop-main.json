@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "id": "shop-main",
+  "type": "chest",
+  "rows": 3,
+  "title": "<gradient:#ff66cc:#66ccff>Shop</gradient>",
+  "items": [
+    { "key": "filler", "slots": [0,1,2,3,4,5,6,7,8,9,17,18,19,20,21,22,23,24,25,26],
+      "material": "minecraft:gray_stained_glass_pane", "name": " ", "locked": true },
+    { "key": "confirm", "slots": [11], "material": "minecraft:lime_dye",
+      "name": "<green><bold>Kaufen</bold></green>", "lore": ["<gray>Klick, um zu kaufen"], "locked": true },
+    { "key": "cancel", "slots": [15], "material": "minecraft:red_dye",
+      "name": "<red>Abbrechen</red>", "locked": true, "action": "close" }
+  ]
+}

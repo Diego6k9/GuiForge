@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/GuiForge.iml" filepath="$PROJECT_DIR$/GuiForge.iml" />
+      <module fileurl="file://$PROJECT_DIR$/guiforge.iml" filepath="$PROJECT_DIR$/guiforge.iml" />
     </modules>
   </component>
 </project>
