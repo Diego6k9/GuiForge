@@ -12,9 +12,8 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.io.UncheckedIOException;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.logging.Logger;
 
@@ -23,20 +22,41 @@ import java.util.logging.Logger;
  */
 public final class GuiManager {
 
+    /**
+     * Plugins that already have a manager. Weak, so unloaded plugins do not stay referenced.
+     */
+    private static final Set<JavaPlugin> ACTIVE = Collections.newSetFromMap(new WeakHashMap<>());
+
     private final JavaPlugin plugin;
     private final Map<String, Gui<?>> guis = new HashMap<>();
     private final ActionRegistry actions = new ActionRegistry();
 
+    /**
+     * Creates the manager for a plugin. Create exactly one per plugin and reuse it: a second manager would
+     * register a second click listener, and every click would then be handled twice.
+     *
+     * @throws IllegalStateException if the plugin already has a manager
+     */
     public GuiManager(JavaPlugin plugin) {
+        if (!ACTIVE.add(plugin)) {
+            throw new IllegalStateException("A GuiManager already exists for plugin '" + plugin.getName()
+                    + "'. Create one per plugin and reuse it.");
+        }
         this.plugin = plugin;
         plugin.getServer().getPluginManager().registerEvents(new ClickListener(), plugin);
     }
 
     /**
      * Loads a GUI definition from a plugin resource, e.g. {@code "gui/shop-main.json"}.
+     *
+     * @throws UncheckedIOException if the resource is missing or cannot be read
      */
-    public <T> Gui<T> load(String resourcePath) throws IOException {
-        return create(GuiLoader.loadResource(plugin.getClass().getClassLoader(), resourcePath));
+    public <T> Gui<T> load(String resourcePath) {
+        try {
+            return create(GuiLoader.loadResource(plugin.getClass().getClassLoader(), resourcePath));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /**

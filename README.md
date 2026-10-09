@@ -22,6 +22,8 @@ Then load a layout from your plugin's resources and bind click handlers by item 
     shop.placeholder("balance", player -> "100");
     shop.open(player);
 
+Create one `GuiManager` per plugin and reuse it. A second one for the same plugin throws an `IllegalStateException`.
+
 Layouts follow the format described in `docs/format-v1.md`.
 
 ## Build
@@ -32,7 +34,8 @@ Requires JDK 25 (see `maven.compiler.release` in `pom.xml`) and Maven 3.9+.
 
 This produces the library jar in `target/`, without bundled dependencies. Gson is a normal dependency.
 
-For a Paper test server, build the shaded jar with the `server` profile. It bundles and relocates Gson and can write straight into a server's `plugins` folder:
+For a Paper test server, build the shaded jar with the `server` profile. It bundles and relocates Gson and can write
+straight into a server's `plugins` folder:
 
     mvn clean package -Pserver -Dpaper.plugins.dir="C:\Users\<you>\Documents\MC\Paper Servers\Paper Server 26.3\plugins"
 
