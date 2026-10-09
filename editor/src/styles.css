@@ -16,12 +16,21 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); }
 
-.app { display: flex; flex-direction: column; min-height: 100vh; }
+.app {
+  display: grid; grid-template-columns: 220px minmax(0, 1fr) 340px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  column-gap: 8px; min-height: 100vh; padding: 0 8px 8px; box-sizing: border-box;
+}
+/* Header, banner, then one row with the three islands. The tab strip lives inside the editor island. */
+.app > .topbar { grid-column: 1 / -1; grid-row: 1; padding-left: 8px; padding-right: 8px; }
+.app > .banner { grid-column: 1 / -1; grid-row: 2; border-radius: 10px; margin-bottom: 8px; }
+.app > .validation { grid-column: 1 / -1; grid-row: 4; border-radius: 10px; margin-top: 8px; }
 
 .topbar {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 16px; background: var(--bg);
 }
+.topbar > * { flex-shrink: 0; white-space: nowrap; }
 .spacer { flex: 1; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
@@ -40,11 +49,11 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .banner { padding: 8px 16px; }
 .banner.error { background: #3a1b1d; color: #ffb4b6; }
 
-.workspace {
-  display: grid; grid-template-columns: 220px 1fr 340px; gap: 0; flex: 1;
-}
-.panel { padding: 14px; border-right: 1px solid var(--line); background: var(--panel); overflow: auto; }
-.panel:last-child { border-right: none; border-left: 1px solid var(--line); }
+.workspace { display: contents; }
+.workspace > .panel:first-child { grid-column: 1; grid-row: 3; }
+.workspace > .center { grid-column: 2; grid-row: 3; }
+.workspace > .panel:last-child { grid-column: 3; grid-row: 3; }
+.panel { padding: 16px; border: none; border-radius: 10px; background: var(--panel); overflow: auto; min-width: 0; }
 .panel h3 { margin: 0 0 10px; font-size: 15px; }
 
 .itemlist { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 4px; }
@@ -59,7 +68,7 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .item-key { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
 
-.center { padding: 16px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+.center { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 16px; overflow: auto; background: var(--panel); border-radius: 10px; min-width: 0; }
 .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .hint { font-size: 13px; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
@@ -88,8 +97,30 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .mc-slot.selected { outline: 3px solid #ffd60a; outline-offset: -3px; }
 .editor-grid .mc-slot:not(.selected):hover { filter: brightness(1.15); }
 
-.preview { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #17181d; }
-.preview-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+/* Editor sections share one rhythm: a small label, the content, and a divider between sections. */
+.section { display: flex; flex-direction: column; gap: 12px; }
+.section + .section { border-top: 1px solid var(--line); padding-top: 16px; }
+.section-head {
+  display: flex; align-items: center; justify-content: space-between; min-height: 24px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.section-note { margin: 0; }
+.preview { gap: 8px; }
+.preview-note { margin: 0; }
+/* The preview window is flat: no inset highlights, so no white edge shows under the slots. */
+.mc-window { width: max-content; background: #c6c6c6; border: 3px solid #373737; border-radius: 0; box-shadow: none; }
+.mc-title { font: 700 12px/1 ui-monospace, Consolas, monospace; color: #404040; padding: 8px 10px 8px; min-height: 18px; }
+.preview-grid { background: transparent; border: 0; box-shadow: none; padding: 0 10px 10px; }
+/* Inside a window the grid is only the slots: the window provides background, border and title. */
+.mc-window .mc-grid { background: transparent; border: 0; box-shadow: none; padding: 0 10px 10px; }
+.mc-window { min-width: 0; }
+.mc-title-input {
+  display: block; width: 100%; box-sizing: border-box; border: 0; border-radius: 2px; outline: none;
+  background: transparent; font-family: inherit; font-size: 12px; font-weight: 700; color: #404040;
+  padding: 8px 10px; margin: 0; caret-color: #404040;
+}
+.mc-title-input::placeholder { color: #7a7a7a; font-weight: 400; }
+.mc-title-input:focus { background: rgba(255, 255, 255, 0.45); }
 .pager { display: flex; align-items: center; gap: 8px; }
 .preview-grid { background: #c6c6c6; }
 .preview-slot { cursor: default; }
@@ -112,8 +143,9 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .errors { margin: 0; padding-left: 18px; color: #ffb4b6; display: grid; gap: 2px; }
 
 @media (max-width: 1100px) {
-  .workspace { grid-template-columns: 1fr; }
-  .panel { border: none; border-bottom: 1px solid var(--line); }
+  .app { display: flex; flex-direction: column; }
+  .workspace { display: flex; flex-direction: column; gap: 8px; }
+  .gui-bar { margin: 0 -16px -6px; padding: 16px 16px 10px; }
 }
 
 .btn.on-panel { border-color: var(--accent); }
@@ -143,3 +175,41 @@ body { margin: 0; background: var(--bg); color: var(--text); }
   width: 100%; text-align: left; background: none; border: 0; color: inherit; padding: 4px 6px; cursor: pointer; border-radius: 4px;
 }
 .material-hits button:hover { background: var(--accent-soft, #2a3a52); }
+
+/* Tab strip on the gutter, aligned with the editor island (8px gutter + 220px sidebar + 8px gap). */
+.gui-bar {
+  display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; min-width: 0;
+  margin: 0 -16px -6px; padding: 16px 16px 10px; border-bottom: 1px solid var(--line);
+}
+.gui-tabs { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.gui-tab { display: inline-flex; align-items: stretch; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: transparent; box-sizing: border-box; }
+.gui-tab > button:first-child {
+  background: none; border: 0; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center;
+  gap: 6px; padding: 6px 10px; font: inherit; border-radius: 8px;
+}
+.gui-tab:hover { background: rgba(255, 255, 255, 0.04); }
+.gui-tab:hover > button:first-child { color: var(--text); }
+.gui-tab-icon { opacity: 0.6; }
+.gui-tab-name { font-weight: 500; }
+.gui-tab-meta { font-size: 11px; color: var(--muted); }
+.gui-tab .x { background: none; border: 0; color: var(--muted); padding: 0 6px; cursor: pointer; opacity: 0; }
+.gui-tab:hover .x, .gui-tab.on .x { opacity: 0.7; }
+.gui-tab .x:hover { opacity: 1; color: var(--danger, #e5484d); }
+/* Active tab: bright text and an accent line underneath, nothing else. */
+.gui-tab.on > button:first-child { color: var(--text); }
+.gui-tab.on { background: var(--bg); border-color: var(--line); box-shadow: inset 0 2px 0 var(--accent, #4f8cff); }
+.gui-tab.on > button:first-child .gui-tab-icon { color: var(--accent, #4f8cff); opacity: 1; }
+.gui-tab.on .gui-tab-name { font-weight: 700; }
+.gui-tab > button:first-child { height: 100%; box-sizing: border-box; }
+.gui-tab-new { border: 0; background: transparent; }
+.gui-tab-new > button:first-child { color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; }
+.gui-tab-new > button:first-child:hover { color: #d7f5e1; background: #16321f; border-color: #5fd38a; }
+.link-badge { font-size: 11px; color: var(--accent, #7fb2ff); margin-left: auto; white-space: nowrap; }
+.ctx-menu {
+  position: fixed; z-index: 20; min-width: 220px; padding: 4px; display: flex; flex-direction: column;
+  background: var(--panel, #1e2127); border: 1px solid var(--border, #3a3f48); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.ctx-menu button { text-align: left; background: none; border: 0; color: inherit; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+.ctx-menu button:hover { background: var(--accent-soft, #2a3a52); }
+.ctx-title { font-size: 12px; color: var(--muted, #8a8f98); padding: 4px 10px; }
