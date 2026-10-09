@@ -12,6 +12,7 @@ public final class ItemDefinition {
     public List<String> lore;
     public Integer customModelData;
     public Boolean glint;
+    public Boolean hideTooltip;
     public Boolean locked;
     public String action;
 }

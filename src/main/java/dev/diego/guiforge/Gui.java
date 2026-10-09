@@ -164,6 +164,9 @@ public final class Gui<T> {
             if (item.glint != null) {
                 meta.setEnchantmentGlintOverride(item.glint);
             }
+            if (item.hideTooltip != null) {
+                meta.setHideTooltip(item.hideTooltip);
+            }
             stack.setItemMeta(meta);
         }
         return stack;

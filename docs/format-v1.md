@@ -25,7 +25,8 @@ Layout-Daten für GUIs. Verhalten (Klick-Logik) gehört **nicht** ins Format, so
 | `name` | string | – | MiniMessage. |
 | `lore` | string[] | – | Jede Zeile MiniMessage. |
 | `customModelData` | int | – | |
-| `glint` | bool | – | Enchant-Glint erzwingen oder unterdrücken. |
+| `glint` | bool | – | Enchant-Glint erzwingen (`true`) oder unterdrücken (`false`). Ideal für Rahmen-Items. |
+| `hideTooltip` | bool | `false` | Blendet den Hover-Tooltip aus. Für dekorative Items, damit keine leere Box erscheint. |
 | `locked` | bool | `true` | `false` = Spieler darf das Item aus dem Slot nehmen. |
 | `action` | string | – | Nur geschlossene Navigation: `close`, `next-page`, `prev-page`, `open:<gui-id>`. |
 
