@@ -49,3 +49,16 @@ mit festen Items, und ob Nav-/Filler-Keys existieren. Fehler werfen eine `Illega
 
 Breaking Changes erhöhen `formatVersion`. Der Loader lehnt unbekannte Versionen ab, statt still falsch zu rendern. Lite-
 und Premium-Editor schreiben dasselbe Schema.
+
+## Platzhalter und Viewer-spezifische Items (nur Code)
+
+Im Format steht `{token}` einfach als Text in `name` und `lore`. Der Code füllt die Werte pro Spieler:
+
+    gui.placeholder("balance", p -> String.valueOf(economy.getBalance(p)));
+    gui.itemFor("profile", p -> buildProfileHead(p));
+
+Platzhalter-Werte werden als reiner Text eingesetzt, MiniMessage-Tags aus Spielerdaten werden also nicht interpretiert. Unbekannte Tokens bleiben stehen.
+
+## Slot-Muster
+
+`"slots": "border"` belegt den äußeren Rahmen der Kiste, `"slots": "empty"` alle Slots. Muster sind Hintergrund: Sie nehmen nur Slots, die noch frei sind und nicht zur Content-Area gehören. Feste Slot-Listen werden immer zuerst vergeben.

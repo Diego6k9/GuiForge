@@ -11,6 +11,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.InventoryHolder;
 import org.jspecify.annotations.NonNull;
 
@@ -109,11 +110,11 @@ final class GuiSession implements InventoryHolder {
                 // Hidden nav slots show the frame item instead of air, so the border stays closed.
                 Gui.FixedItem frame = frameItem(content);
                 if (frame != null) {
-                    place(frame, fixed.def().slots);
+                    place(frame, fixed.def().resolvedSlots);
                 }
                 continue;
             }
-            place(fixed, fixed.def().slots);
+            place(fixed, fixed.def().resolvedSlots);
         }
         if (content != null) {
             renderContent(content);
@@ -122,7 +123,7 @@ final class GuiSession implements InventoryHolder {
 
     private void place(Gui.FixedItem item, int[] slots) {
         for (int slot : slots) {
-            inventory.setItem(slot, item.template().clone());
+            inventory.setItem(slot, gui.stackFor(item, viewer));
             definitionBySlot.put(slot, item.def());
         }
     }
@@ -141,7 +142,7 @@ final class GuiSession implements InventoryHolder {
                 inventory.setItem(slot, gui.renderContent(items.get(index)));
                 contentIndexBySlot.put(slot, index);
             } else if (padding != null) {
-                inventory.setItem(slot, padding.template().clone());
+                inventory.setItem(slot, gui.stackFor(padding, viewer));
             }
         }
     }

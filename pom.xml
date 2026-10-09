@@ -35,6 +35,12 @@
             <version>${paper.api.version}</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.3</version>
+            <scope>test</scope>
+        </dependency>
         <!-- Bundled into the jar and relocated, so it cannot clash with other plugins' Gson. -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
