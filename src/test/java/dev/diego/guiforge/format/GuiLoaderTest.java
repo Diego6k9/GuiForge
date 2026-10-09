@@ -8,6 +8,7 @@ class GuiLoaderTest {
 
     private static final String HEAD = "{\"formatVersion\":1,\"id\":\"test\",\"rows\":3,";
     private static final String STONE = "\"material\":\"minecraft:stone\"";
+    private static final String HASH = "2cdca1d7d7e27132a805af3a5f9d3f29b78f22e31eb97db406cd37be0e2d6e77";
 
     private static IllegalArgumentException invalid(String json) {
         return assertThrows(IllegalArgumentException.class, () -> GuiLoader.parse(json));
@@ -136,5 +137,29 @@ class GuiLoaderTest {
         int[] bg = def.items.getFirst().resolvedSlots;
         assertEquals(7, bg.length);
         assertTrue(!contains(bg, 2) && !contains(bg, 3), "content slots must stay free of background items");
+    }
+
+    @Test
+    void acceptsSkinHashAndUrlOnPlayerHead() {
+        GuiDefinition url = GuiLoader.parse(HEAD + "\"items\":[{\"key\":\"a\",\"slots\":[0],\"material\":\"minecraft:player_head\","
+                + "\"skin\":\"http://textures.minecraft.net/texture/" + HASH + "\"}]}");
+        assertEquals(HASH, SkinTexture.hashOf(url.items.get(0).skin));
+        GuiDefinition bare = GuiLoader.parse(HEAD + "\"items\":[{\"key\":\"a\",\"slots\":[0],\"material\":\"minecraft:player_head\","
+                + "\"skin\":\"" + HASH + "\"}]}");
+        assertEquals(HASH, SkinTexture.hashOf(bare.items.get(0).skin));
+    }
+
+    @Test
+    void rejectsSkinOnNonHeadMaterial() {
+        IllegalArgumentException e = invalid(HEAD + "\"items\":[{\"key\":\"a\",\"slots\":[0],\"material\":\"minecraft:stone\","
+                + "\"skin\":\"" + HASH + "\"}]}");
+        assertTrue(e.getMessage().contains("player_head"));
+    }
+
+    @Test
+    void rejectsMalformedSkin() {
+        IllegalArgumentException e = invalid(HEAD + "\"items\":[{\"key\":\"a\",\"slots\":[0],\"material\":\"minecraft:player_head\","
+                + "\"skin\":\"https://example.com/skin.png\"}]}");
+        assertTrue(e.getMessage().contains("skin"));
     }
 }

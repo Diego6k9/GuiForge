@@ -3,26 +3,22 @@ package dev.diego.guiforge.format;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonSyntaxException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.StringReader;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 
-/** Parses and validates GUI definitions (format v1). Pure Java, no server needed. */
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
+/**
+ * Parses and validates GUI definitions (format v1). Pure Java, no server needed.
+ */
 public final class GuiLoader {
 
     public static final int FORMAT_VERSION = 1;
     private static final Gson GSON = new Gson();
     private static final Set<String> PATTERNS = Set.of("border", "empty");
 
-    private GuiLoader() {}
+    private GuiLoader() {
+    }
 
     public static GuiDefinition parse(Reader reader) {
         GuiDefinition def;
@@ -81,6 +77,15 @@ public final class GuiLoader {
             String where = gui + ", item " + describe(item);
             require(item.material != null && !item.material.isBlank(), where + ": 'material' is required");
             require(item.slots != null, where + ": 'slots' is required");
+            if (item.skin != null) {
+                require("minecraft:player_head".equals(item.material) || "player_head".equals(item.material),
+                        where + ": 'skin' is only allowed for minecraft:player_head");
+                try {
+                    SkinTexture.hashOf(item.skin);
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException(where + ": " + e.getMessage(), e);
+                }
+            }
             if (item.key != null) {
                 require(keys.add(item.key), gui + ": duplicate key '" + item.key + "'");
             }
