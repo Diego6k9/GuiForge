@@ -1,6 +1,8 @@
 package dev.diego.guiforge.format;
 
-/** Paginated content area of a GUI. */
+/**
+ * Paginated content area of a GUI.
+ */
 public final class ContentDefinition {
     public int[] slots;
     public String fill;

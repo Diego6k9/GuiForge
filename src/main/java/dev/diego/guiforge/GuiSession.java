@@ -3,9 +3,8 @@ package dev.diego.guiforge;
 import dev.diego.guiforge.format.ContentDefinition;
 import dev.diego.guiforge.format.GuiDefinition;
 import dev.diego.guiforge.format.ItemDefinition;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -14,7 +13,13 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.jspecify.annotations.NonNull;
 
-/** One opened inventory for one viewer. Owns the page state and the slot-to-item mapping. */
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * One opened inventory for one viewer. Owns the page state and the slot-to-item mapping.
+ */
 final class GuiSession implements InventoryHolder {
 
     private static final MiniMessage MINI = MiniMessage.miniMessage();
@@ -32,7 +37,7 @@ final class GuiSession implements InventoryHolder {
         this.manager = manager;
         this.viewer = viewer;
         GuiDefinition def = gui.definition();
-        String title = def.title == null ? "" : def.title;
+        String title = gui.resolve(def.title == null ? "" : def.title, viewer);
         this.inventory = Bukkit.createInventory(this, def.rows * 9, MINI.deserialize(title));
     }
 
@@ -40,6 +45,8 @@ final class GuiSession implements InventoryHolder {
         page = 0;
         render();
         viewer.openInventory(inventory);
+        gui.track(this);
+        gui.dispatchOpen(viewer);
     }
 
     @Override
@@ -50,6 +57,19 @@ final class GuiSession implements InventoryHolder {
     boolean isUnlocked(int slot) {
         ItemDefinition item = definitionBySlot.get(slot);
         return item != null && Boolean.FALSE.equals(item.locked);
+    }
+
+    /** Called when the viewer closes this inventory, for whatever reason. */
+    void handleClose() {
+        gui.untrack(this);
+        gui.dispatchClose(viewer);
+    }
+
+    /** Re-renders items if this inventory is still the one the viewer has open. */
+    void refresh() {
+        if (viewer.getOpenInventory().getTopInventory() == inventory) {
+            render();
+        }
     }
 
     void handleClick(InventoryClickEvent event) {
@@ -70,6 +90,12 @@ final class GuiSession implements InventoryHolder {
         }
     }
 
+    private void playSound(String spec) {
+        SoundSpec.parse(spec).ifPresentOrElse(
+                sound -> viewer.playSound(Sound.sound(Key.key(sound.key()), Sound.Source.MASTER, sound.volume(), sound.pitch())),
+                () -> manager.logger().warning("Invalid sound '" + spec + "' in GUI '" + gui.id() + "'"));
+    }
+
     private void runAction(String action) {
         switch (action) {
             case "close" -> viewer.closeInventory();
@@ -88,7 +114,11 @@ final class GuiSession implements InventoryHolder {
             default -> {
                 if (action.startsWith("open:")) {
                     manager.open(viewer, action.substring("open:".length()));
-                } else {
+                } else if (action.startsWith("sound:")) {
+                    playSound(action.substring("sound:".length()));
+                } else if (action.startsWith("message:")) {
+                    viewer.sendMessage(Gui.text(gui.resolve(action.substring("message:".length()), viewer)));
+                } else if (!manager.runCustomAction(action, viewer)) {
                     manager.logger().warning("Unknown action '" + action + "' in GUI '" + gui.id() + "'");
                 }
             }
@@ -106,15 +136,24 @@ final class GuiSession implements InventoryHolder {
 
         for (Gui.FixedItem fixed : gui.fixedItems()) {
             if (isHiddenNav(fixed.def(), content, pages)) {
+                // Hidden nav slots show the frame item instead of air, so the border stays closed.
+                Gui.FixedItem frame = frameItem(content);
+                if (frame != null) {
+                    place(frame, fixed.def().resolvedSlots);
+                }
                 continue;
             }
-            for (int slot : fixed.def().slots) {
-                inventory.setItem(slot, fixed.template().clone());
-                definitionBySlot.put(slot, fixed.def());
-            }
+            place(fixed, fixed.def().resolvedSlots);
         }
         if (content != null) {
             renderContent(content);
+        }
+    }
+
+    private void place(Gui.FixedItem item, int[] slots) {
+        for (int slot : slots) {
+            inventory.setItem(slot, gui.stackFor(item, viewer));
+            definitionBySlot.put(slot, item.def());
         }
     }
 
@@ -122,9 +161,8 @@ final class GuiSession implements InventoryHolder {
         int[] slots = gui.contentSlots();
         int perPage = slots.length;
         List<?> items = gui.contents();
-        Gui.FixedItem filler = "filler".equals(content.fill) && content.filler != null
-                ? gui.fixedByKey(content.filler)
-                : null;
+        // Only "fill: filler" pads the unused content slots. The default "empty" leaves them open.
+        Gui.FixedItem padding = "filler".equals(content.fill) ? frameItem(content) : null;
 
         for (int i = 0; i < perPage; i++) {
             int index = page * perPage + i;
@@ -132,10 +170,14 @@ final class GuiSession implements InventoryHolder {
             if (index < items.size()) {
                 inventory.setItem(slot, gui.renderContent(items.get(index)));
                 contentIndexBySlot.put(slot, index);
-            } else if (filler != null) {
-                inventory.setItem(slot, filler.template().clone());
+            } else if (padding != null) {
+                inventory.setItem(slot, gui.stackFor(padding, viewer));
             }
         }
+    }
+
+    private Gui.FixedItem frameItem(ContentDefinition content) {
+        return content == null || content.filler == null ? null : gui.fixedByKey(content.filler);
     }
 
     private boolean isHiddenNav(ItemDefinition item, ContentDefinition content, int pages) {

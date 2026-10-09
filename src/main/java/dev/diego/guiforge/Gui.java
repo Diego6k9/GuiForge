@@ -1,23 +1,40 @@
 package dev.diego.guiforge;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
 import dev.diego.guiforge.format.ContentDefinition;
 import dev.diego.guiforge.format.GuiDefinition;
 import dev.diego.guiforge.format.ItemDefinition;
+import com.destroystokyo.paper.profile.ProfileProperty;
+import dev.diego.guiforge.format.SkinTexture;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 
 /**
- * A GUI template loaded from a definition. Holds handlers and (for paginated GUIs) the content list.
+ * A GUI template loaded from a definition. Holds handlers, placeholders and (for paginated GUIs) the content.
  * Each opened inventory gets its own {@link GuiSession}, so viewers never share page state.
  *
  * @param <T> type of the paginated content objects; use {@code Object} for non-paginated GUIs
@@ -25,6 +42,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 public final class Gui<T> {
 
     private static final MiniMessage MINI = MiniMessage.miniMessage();
+    private static final Pattern TOKEN = Pattern.compile("\\{([A-Za-z0-9_.\\-]+)\\}");
 
     record FixedItem(ItemDefinition def, ItemStack template) {}
 
@@ -33,15 +51,20 @@ public final class Gui<T> {
     private final List<FixedItem> fixedItems = new ArrayList<>();
     private final Map<String, FixedItem> fixedByKey = new HashMap<>();
     private final Map<String, Consumer<ClickContext>> handlers = new HashMap<>();
+    private final Map<String, Function<Player, ItemStack>> itemRenderers = new HashMap<>();
+    private final Map<String, Function<Player, String>> placeholders = new HashMap<>();
     private List<T> contents = List.of();
     private Function<T, ItemStack> renderer;
     private BiConsumer<Player, T> contentClickHandler;
+    private final List<Consumer<Player>> openHandlers = new ArrayList<>();
+    private final List<Consumer<Player>> closeHandlers = new ArrayList<>();
+    private final Set<GuiSession> openSessions = new HashSet<>();
 
     Gui(GuiManager manager, GuiDefinition definition) {
         this.manager = manager;
         this.definition = definition;
         for (ItemDefinition item : definition.items) {
-            FixedItem fixed = new FixedItem(item, buildStack(item));
+            FixedItem fixed = new FixedItem(item, buildStack(item, null));
             fixedItems.add(fixed);
             if (item.key != null) {
                 fixedByKey.put(item.key, fixed);
@@ -51,10 +74,27 @@ public final class Gui<T> {
 
     /** Binds a click handler to the item with the given key. Fails fast on unknown keys. */
     public Gui<T> onClick(String key, Consumer<ClickContext> handler) {
-        if (!fixedByKey.containsKey(key)) {
-            throw new IllegalArgumentException("GUI '" + definition.id + "' has no item with key '" + key + "'");
-        }
+        requireKey(key);
         handlers.put(key, handler);
+        return this;
+    }
+
+    /**
+     * Replaces the item with the given key with whatever this returns, computed per viewer on each render.
+     * Use it for items whose content depends on the player (balance, rank, owned state, ...).
+     */
+    public Gui<T> itemFor(String key, Function<Player, ItemStack> renderer) {
+        requireKey(key);
+        itemRenderers.put(key, Objects.requireNonNull(renderer, "renderer"));
+        return this;
+    }
+
+    /**
+     * Registers a value for {@code {token}} in item names, lore and the GUI title. The value is inserted as plain text,
+     * so player input cannot inject MiniMessage tags. Unknown tokens are left as they are.
+     */
+    public Gui<T> placeholder(String token, Function<Player, String> value) {
+        placeholders.put(token, Objects.requireNonNull(value, "value"));
         return this;
     }
 
@@ -75,6 +115,34 @@ public final class Gui<T> {
         return this;
     }
 
+    /** Runs when a viewer opens this GUI. Several handlers can be added. */
+    public Gui<T> onOpen(Consumer<Player> handler) {
+        openHandlers.add(Objects.requireNonNull(handler, "handler"));
+        return this;
+    }
+
+    /** Runs when a viewer closes this GUI, also when it is replaced by another GUI or the player leaves. */
+    public Gui<T> onClose(Consumer<Player> handler) {
+        closeHandlers.add(Objects.requireNonNull(handler, "handler"));
+        return this;
+    }
+
+    /**
+     * A copy of the fixed item with this key, as the layout defines it. Placeholders are not filled in;
+     * use {@link #itemFor} for per-player content. Empty if the GUI has no fixed item with this key.
+     */
+    public Optional<ItemStack> item(String key) {
+        FixedItem fixed = fixedByKey.get(key);
+        return fixed == null ? Optional.empty() : Optional.of(fixed.template().clone());
+    }
+
+    /** Re-renders the items for every viewer who has this GUI open. Call it on the main thread. */
+    public void refresh() {
+        for (GuiSession session : List.copyOf(openSessions)) {
+            session.refresh();
+        }
+    }
+
     /** Opens this GUI for a player with fresh state (page 0). */
     public void open(Player player) {
         new GuiSession(this, manager, player).open();
@@ -82,6 +150,31 @@ public final class Gui<T> {
 
     public String id() {
         return definition.id;
+    }
+
+    /** Converts MiniMessage to a component without Minecraft's default italics for names and lore. */
+    public static Component text(String miniMessage) {
+        return MINI.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
+    }
+
+    void dispatchOpen(Player player) {
+        for (Consumer<Player> handler : openHandlers) {
+            handler.accept(player);
+        }
+    }
+
+    void dispatchClose(Player player) {
+        for (Consumer<Player> handler : closeHandlers) {
+            handler.accept(player);
+        }
+    }
+
+    void track(GuiSession session) {
+        openSessions.add(session);
+    }
+
+    void untrack(GuiSession session) {
+        openSessions.remove(session);
     }
 
     GuiDefinition definition() {
@@ -114,6 +207,21 @@ public final class Gui<T> {
         return contents;
     }
 
+    /** The stack a viewer sees for a fixed item: custom renderer, then placeholders, then the cached template. */
+    ItemStack stackFor(FixedItem fixed, Player viewer) {
+        ItemDefinition def = fixed.def();
+        if (def.key != null) {
+            Function<Player, ItemStack> custom = itemRenderers.get(def.key);
+            if (custom != null) {
+                return custom.apply(viewer);
+            }
+        }
+        if (viewer == null || !hasTokens(def)) {
+            return fixed.template().clone();
+        }
+        return buildStack(def, viewer);
+    }
+
     @SuppressWarnings("unchecked")
     ItemStack renderContent(Object item) {
         if (renderer == null) {
@@ -136,7 +244,20 @@ public final class Gui<T> {
         }
     }
 
-    static ItemStack buildStack(ItemDefinition item) {
+    private void requireKey(String key) {
+        if (!fixedByKey.containsKey(key)) {
+            throw new IllegalArgumentException("GUI '" + definition.id + "' has no item with key '" + key + "'");
+        }
+    }
+
+    private static boolean hasTokens(ItemDefinition def) {
+        if (def.name != null && TOKEN.matcher(def.name).find()) {
+            return true;
+        }
+        return def.lore != null && def.lore.stream().anyMatch(line -> TOKEN.matcher(line).find());
+    }
+
+    private ItemStack buildStack(ItemDefinition item, Player viewer) {
         Material material = Material.matchMaterial(item.material);
         if (material == null) {
             throw new IllegalArgumentException("Unknown material '" + item.material + "' in item "
@@ -146,10 +267,10 @@ public final class Gui<T> {
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
             if (item.name != null) {
-                meta.displayName(MINI.deserialize(item.name));
+                meta.displayName(text(resolve(item.name, viewer)));
             }
             if (item.lore != null && !item.lore.isEmpty()) {
-                meta.lore(item.lore.stream().map(MINI::deserialize).toList());
+                meta.lore(item.lore.stream().map(line -> text(resolve(line, viewer))).toList());
             }
             if (item.customModelData != null) {
                 meta.setCustomModelData(item.customModelData);
@@ -157,8 +278,53 @@ public final class Gui<T> {
             if (item.glint != null) {
                 meta.setEnchantmentGlintOverride(item.glint);
             }
+            if (item.hideTooltip != null) {
+                meta.setHideTooltip(item.hideTooltip);
+            }
+            // Menus should not show combat stats of weapons or armor unless the format asks for them.
+            if (item.hideAttributes == null || item.hideAttributes) {
+                meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            }
+            if (item.skin != null && meta instanceof SkullMeta skull) {
+                skull.setPlayerProfile(skinProfile(item.skin));
+            }
             stack.setItemMeta(meta);
         }
         return stack;
+    }
+
+    /**
+     * Builds a profile that only carries the texture URL, so no session-server lookup happens.
+     * The UUID comes from the hash, so equal skins produce equal profiles and stack together.
+     */
+    private static com.destroystokyo.paper.profile.PlayerProfile skinProfile(String skin) {
+        String hash = SkinTexture.hashOf(skin);
+        // Paper's SkullMeta takes its own PlayerProfile type; Bukkit.createProfile hands back the Paper
+        // implementation, so the cast only narrows the static type.
+        PlayerProfile profile = Bukkit.createProfile(UUID.nameUUIDFromBytes(hash.getBytes(StandardCharsets.UTF_8)), null);
+        // Write the vanilla "textures" property ourselves. Without it Paper completes the profile from the
+        // UUID, which yields a random default skin instead of the requested one.
+        String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + SkinTexture.urlOf(hash) + "\"}}}";
+        String value = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+        profile.setProperty(new ProfileProperty("textures", value));
+        return profile;
+    }
+
+    /** Fills {token}s with the values of this viewer. Also used for the GUI title. */
+    String resolve(String template, Player viewer) {
+        if (viewer == null || placeholders.isEmpty()) {
+            return template;
+        }
+        Matcher matcher = TOKEN.matcher(template);
+        StringBuilder out = new StringBuilder();
+        while (matcher.find()) {
+            Function<Player, String> value = placeholders.get(matcher.group(1));
+            String replacement = value == null
+                    ? matcher.group(0)
+                    : MINI.escapeTags(Objects.toString(value.apply(viewer), ""));
+            matcher.appendReplacement(out, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(out);
+        return out.toString();
     }
 }
