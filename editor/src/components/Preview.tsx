@@ -1,16 +1,21 @@
 import { useState, type MouseEvent } from 'react';
-import { ROLE_COLORS, roleOf, type EditorGui, type EditorItem } from '../format/model';
+import { displayMaterial, ROLE_COLORS, roleOf, type EditorGui, type EditorItem } from '../format/model';
 import { parseMiniMessage, plainText, type Segment } from '../format/minimessage';
+import type { ResourcePack } from '../assets/resourcePack';
+import { SlotContent } from './SlotIcon';
 
 const SAMPLE_COUNT = 30;
 
 interface PreviewProps {
   gui: EditorGui;
   resolved: Map<string, number[]>;
+  pack?: ResourcePack | null;
 }
 
 interface Cell {
   label: string;
+  /** Material id without minecraft:, for the icon from the resource pack. */
+  material?: string;
   color?: string;
   /** The item shown in this slot; drives the hover tooltip. */
   item?: EditorItem;
@@ -31,7 +36,7 @@ const TIP_WIDTH = 260;
  * Approximates the runtime: same slot resolution, same nav-hiding and filler rules as GuiSession.
  * Item textures are not rendered yet, so items show their name on a coloured tile.
  */
-export function Preview({ gui, resolved }: PreviewProps) {
+export function Preview({ gui, resolved, pack = null }: PreviewProps) {
   const [page, setPage] = useState(0);
   const [tip, setTip] = useState<Tip | null>(null);
   const size = gui.rows * 9;
@@ -48,6 +53,7 @@ export function Preview({ gui, resolved }: PreviewProps) {
 
   const itemCell = (item: EditorItem): Cell => ({
     label: plainText(item.name) || item.key,
+    material: displayMaterial(item.material),
     color: ROLE_COLORS[roleOf(item, gui)],
     item,
   });
@@ -115,7 +121,7 @@ export function Preview({ gui, resolved }: PreviewProps) {
               onMouseMove={onMove}
               onMouseLeave={() => setTip(null)}
             >
-              <span>{cell.label}</span>
+              <span><SlotContent pack={pack} id={cell.material} label={cell.label} /></span>
             </div>
           ))}
         </div>

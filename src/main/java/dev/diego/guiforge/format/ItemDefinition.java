@@ -25,6 +25,10 @@ public final class ItemDefinition {
     public Boolean glint;
     public Boolean hideTooltip;
     /**
+     * Hides the vanilla attribute lines (damage, armor, attack speed) in the tooltip. Null means true.
+     */
+    public Boolean hideAttributes;
+    /**
      * Skin of a player head: texture hash or textures.minecraft.net URL. Only valid for player_head.
      */
     public String skin;

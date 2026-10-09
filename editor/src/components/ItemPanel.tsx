@@ -1,22 +1,21 @@
-import { useState } from 'react';
 import { RichField } from './RichField';
+import { MaterialPicker } from './MaterialPicker';
+import type { ResourcePack } from '../assets/resourcePack';
 import {
-  derivedKey, displayMaterial, isAutoKey, MATERIALS, normalizeMaterial, skinHashOf, skinUrl, type EditorGui, type EditorItem, type Pattern,
+  derivedKey, isAutoKey, skinHashOf, skinUrl, type EditorGui, type EditorItem, type Pattern,
 } from '../format/model';
 
 interface ItemPanelProps {
   item: EditorItem;
   gui: EditorGui;
+  pack: ResourcePack | null;
   onChange: (patch: Partial<EditorItem>) => void;
   onDelete: () => void;
 }
 
 const ACTIONS = ['', 'close', 'next-page', 'prev-page', 'open:'];
 
-export function ItemPanel({ item, gui, onChange, onDelete }: ItemPanelProps) {
-  const [materialFocus, setMaterialFocus] = useState(false);
-  const materialQuery = displayMaterial(item.material).toLowerCase();
-  const materialHits = MATERIALS.filter((m) => displayMaterial(m).includes(materialQuery)).slice(0, 8);
+export function ItemPanel({ item, gui, pack, onChange, onDelete }: ItemPanelProps) {
   const slotMode = item.pattern ?? 'manual';
   const setSlotMode = (value: string) => {
     if (value === 'manual') onChange({ pattern: null });
@@ -59,29 +58,7 @@ export function ItemPanel({ item, gui, onChange, onDelete }: ItemPanelProps) {
         {keyTaken && <small className="error-text">Key wird doppelt verwendet.</small>}
       </label>
 
-      <label className="material-picker">
-        Material
-        <input
-          value={displayMaterial(item.material)}
-          placeholder="z. B. diamond"
-          onFocus={() => setMaterialFocus(true)}
-          onBlur={() => setMaterialFocus(false)}
-          onChange={(e) => onChange({ material: normalizeMaterial(e.target.value) })}
-        />
-        {materialFocus && materialHits.length > 0 && (
-          <ul className="material-hits" role="listbox">
-            {materialHits.map((m) => (
-              <li key={m}>
-                {/* onMouseDown fires before the input blurs, so the pick lands. */}
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); onChange({ material: m }); setMaterialFocus(false); }}>
-                  {displayMaterial(m)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <small className="muted">Tippen zum Suchen, „minecraft:“ wird automatisch ergänzt.</small>
-      </label>
+      <MaterialPicker value={item.material} pack={pack} onChange={(material) => onChange({ material })} />
 
       <div className="row">
         <label>
@@ -147,6 +124,7 @@ export function ItemPanel({ item, gui, onChange, onDelete }: ItemPanelProps) {
       <div className="checks">
         <label><input type="checkbox" checked={item.locked} onChange={(e) => onChange({ locked: e.target.checked })} /> Gesperrt (Spieler kann nichts entnehmen)</label>
         <label><input type="checkbox" checked={item.hideTooltip} onChange={(e) => onChange({ hideTooltip: e.target.checked })} /> Tooltip ausblenden</label>
+        <label><input type="checkbox" checked={item.hideAttributes} onChange={(e) => onChange({ hideAttributes: e.target.checked })} /> Attribute ausblenden</label>
       </div>
 
       <button type="button" className="btn danger" onClick={onDelete}>Item löschen</button>

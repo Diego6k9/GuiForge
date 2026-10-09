@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useReducer, useRef, useState, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState, type ChangeEvent, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import {
-  emptyGui, emptyProject, fromFormat, linkProblems, linkTarget, newId, newItem, problems, projectFromStorage,
+  displayMaterial, emptyGui, emptyProject, fromFormat, linkProblems, linkTarget, newId, newItem, problems, projectFromStorage,
   projectToStorage, renameGuiEverywhere, resolveSlots, roleOf, TEMPLATES, uniqueGuiId, ROLE_COLORS,
   type EditorGui, type EditorItem, type Project,
 } from './format/model';
@@ -13,6 +13,9 @@ import { ItemPanel } from './components/ItemPanel';
 import { GuiPanel } from './components/GuiPanel';
 import { Preview } from './components/Preview';
 import { LinkView } from './components/LinkView';
+import { Resizer } from './components/Resizer';
+import { ResourcePack } from './assets/resourcePack';
+import { clearPack, loadPack as loadStoredPack, savePack } from './assets/packStore';
 
 const STORAGE_KEY = 'guiforge-project-v2';
 const LEGACY_KEY = 'guiforge-editor-v1';
@@ -59,6 +62,29 @@ const TITLE_LIMIT = 32;
 type Tool = 'assign' | 'content';
 type Inspector = 'gui' | 'item';
 
+const LAYOUT_KEY = 'guiforge-layout-v1';
+/** Arrow keys as [dx, dy] steps on the slot grid. */
+const ARROW_STEPS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+const LEFT_MIN = 160;
+const LEFT_MAX = 420;
+const RIGHT_MIN = 260;
+const RIGHT_MAX = 560;
+
+/** Panel widths in px, restored from this browser if saved before; defaults otherwise. */
+function loadColumns(): { left: number; right: number } {
+  const fallback = { left: 220, right: 340 };
+  try {
+    const raw = window.localStorage.getItem(LAYOUT_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as { left?: unknown; right?: unknown };
+    const left = typeof parsed.left === 'number' ? Math.min(LEFT_MAX, Math.max(LEFT_MIN, parsed.left)) : fallback.left;
+    const right = typeof parsed.right === 'number' ? Math.min(RIGHT_MAX, Math.max(RIGHT_MIN, parsed.right)) : fallback.right;
+    return { left, right };
+  } catch {
+    return fallback;
+  }
+}
+
 export default function App() {
   const [history, dispatch] = useReducer(historyReducer, undefined, (): History => ({
     past: [], present: loadInitial(), future: [],
@@ -76,7 +102,18 @@ export default function App() {
   const [importError, setImportError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const packInput = useRef<HTMLInputElement>(null);
+  const [pack, setPack] = useState<ResourcePack | null>(null);
   const [tabDrag, setTabDrag] = useState<{ from: number; over: number | null } | null>(null);
+  const [columns, setColumns] = useState(loadColumns);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(LAYOUT_KEY, JSON.stringify(columns));
+    } catch {
+      // Storage full or blocked: the layout just is not remembered.
+    }
+  }, [columns]);
 
   // Status messages disappear on their own; errors that need action stay until the next change.
   useEffect(() => {
@@ -132,10 +169,16 @@ export default function App() {
     function onKey(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+      // The resize handles use the arrow keys for their own width.
+      if (target?.getAttribute('role') === 'separator') return;
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
           e.preventDefault();
           removeItem(selectedId);
+        } else if (selected && ARROW_STEPS[e.key]) {
+          e.preventDefault();
+          const [dx, dy] = ARROW_STEPS[e.key];
+          moveSelected(dx, dy);
         } else if (e.key === 'Escape') {
           if (menu) setMenu(null);
           else if (selectedId) select(null);
@@ -159,7 +202,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectedId, gui, project, index, menu]);
+  }, [selectedId, selected, gui, project, index, menu]);
 
   function patchGui(patch: Partial<EditorGui>) {
     const next = { ...gui, ...patch };
@@ -345,14 +388,38 @@ export default function App() {
     }
   }
 
-  function onCellDown(slot: number) {
+  function onCellDown(slot: number, alt: boolean) {
+    const ownerId = occupant.get(slot);
+    // Alt+click is the eyedropper: it copies the material of the clicked item into the selected one.
+    if (alt && ownerId && selected && ownerId !== selected.id) {
+      const source = itemById.get(ownerId);
+      if (source) patchItem(selected.id, { material: source.material });
+      return;
+    }
     const canPaint = tool === 'content' || (selected !== null && !selected.pattern);
     if (canPaint) {
       setDrag({ start: slot, current: slot });
       return;
     }
-    const ownerId = occupant.get(slot);
     if (ownerId) select(ownerId);
+  }
+
+  /** Moves the selected item one slot in the given direction. Stays inside the GUI and never onto another item. */
+  function moveSelected(dx: number, dy: number) {
+    if (!selected || selected.pattern || selected.slots.length === 0) return;
+    const next: number[] = [];
+    for (const slot of selected.slots) {
+      const x = (slot % 9) + dx;
+      const y = Math.floor(slot / 9) + dy;
+      if (x < 0 || x > 8 || y < 0 || y >= gui.rows) return;
+      next.push(y * 9 + x);
+    }
+    const taken = new Set(gui.items.filter((i) => i.id !== selected.id).flatMap((i) => i.slots));
+    if (next.some((slot) => taken.has(slot))) return;
+    commit(
+      { ...gui, items: gui.items.map((i) => (i.id === selected.id ? { ...i, slots: next.sort((a, b) => a - b) } : i)) },
+      `move:${selected.id}`,
+    );
   }
 
   function onCellEnter(slot: number) {
@@ -436,6 +503,52 @@ export default function App() {
     importText(await file.text());
   }
 
+  /** Loads a resource pack or client .jar, remembers it in this browser, and shows its icons from now on. */
+  function attachPack(file: File) {
+    ResourcePack.open(file, file.name)
+      .then(async (loaded) => {
+        setPack(loaded);
+        await savePack({ name: file.name, file });
+        setNotice(`Paket „${file.name}“ geladen: ${loaded.itemIds.length} Item-Texturen.`);
+      })
+      .catch((err) => setNotice(`Paket nicht geladen: ${err instanceof Error ? err.message : String(err)}`));
+  }
+
+  function detachPack() {
+    setPack(null);
+    void clearPack();
+  }
+
+  // A pack saved in an earlier session comes back on start.
+  useEffect(() => {
+    let alive = true;
+    void loadStoredPack().then((stored) => {
+      if (!stored) return;
+      ResourcePack.open(stored.file, stored.name)
+        .then((loaded) => { if (alive) setPack(loaded); })
+        .catch(() => { void clearPack(); });
+    });
+    return () => { alive = false; };
+  }, []);
+
+  // Dropping a .zip or .jar anywhere on the editor loads it. Other drags (GUI tabs, grid) are left alone.
+  useEffect(() => {
+    const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files');
+    const over = (e: DragEvent) => { if (hasFiles(e)) e.preventDefault(); };
+    const drop = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      const file = e.dataTransfer?.files[0];
+      if (file && /\.(zip|jar)$/i.test(file.name)) attachPack(file);
+    };
+    window.addEventListener('dragover', over);
+    window.addEventListener('drop', drop);
+    return () => {
+      window.removeEventListener('dragover', over);
+      window.removeEventListener('drop', drop);
+    };
+  }, []);
+
   function applyTemplate(id: string) {
     const template = TEMPLATES.find((t) => t.id === id);
     if (!template) return;
@@ -456,6 +569,7 @@ export default function App() {
     return {
       slot,
       label: owner ? shortMaterial(owner.material) : '',
+      material: owner ? displayMaterial(owner.material) : undefined,
       color: owner ? ROLE_COLORS[roleOf(owner, gui)] : undefined,
       title: owner ? `${owner.key} (Slot ${slot})` : `Slot ${slot}`,
       selected: !!owner && owner.id === selectedId,
@@ -473,7 +587,7 @@ export default function App() {
       : 'Item in der Liste wählen oder ein Slot anklicken, dann zuweisen.';
 
   return (
-    <div className="app">
+    <div className="app" style={{ "--col-left": `${columns.left}px`, "--col-right": `${columns.right}px` } as CSSProperties}>
       <header className="topbar">
         <strong>GuiForge Editor</strong>
         <div className="spacer" />
@@ -489,6 +603,19 @@ export default function App() {
         <button type="button" className="btn" onClick={() => void importFromDisk()} title="GUI aus einer .json-Datei laden">
           Importieren
         </button>
+        {pack ? (
+          <span className="pack-chip" title="Geladenes Ressourcenpaket. Es bleibt in diesem Browser gespeichert.">
+            Paket: {pack.name}
+            <button type="button" className="x" aria-label="Paket entfernen" onClick={detachPack}>×</button>
+          </span>
+        ) : (
+          <button type="button" className="btn" onClick={() => packInput.current?.click()}
+            title="Resource Pack (.zip) oder Client-.jar laden, damit Items Icons und deutsche Namen bekommen">
+            Paket laden
+          </button>
+        )}
+        <input ref={packInput} type="file" accept=".zip,.jar,application/zip" hidden
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) attachPack(f); }} />
         <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={importFile} />
         {/* aria-disabled instead of disabled: disabled buttons swallow the title tooltip that explains why. */}
         {project.guis.length > 1 && (
@@ -539,6 +666,8 @@ export default function App() {
             <span><i style={{ background: ROLE_COLORS.item }} /> Item</span>
           </div>
         </aside>
+        <Resizer className="resizer-left" side="left" label="Breite der Item-Liste" width={columns.left} min={LEFT_MIN} max={LEFT_MAX}
+          onChange={(left) => setColumns((c) => ({ ...c, left }))} />
 
         <section className="center">
         <nav className="gui-bar" aria-label="GUIs im Projekt">
@@ -566,15 +695,18 @@ export default function App() {
               <button type="button" onClick={addGui} title="Neue GUI im Projekt anlegen">+ Neue GUI</button>
             </span>
           </div>
-          {project.guis.length > 1 && (
-            <button type="button" className={`btn small links-toggle${view === 'links' ? ' on-panel' : ''}`}
-              aria-pressed={view === 'links'} onClick={() => setView(view === 'links' ? 'edit' : 'links')}
-              title="Zeigt, welche GUIs per open:-Aktion aufeinander verweisen">
-              Verknüpfungen
-            </button>
-          )}
         </nav>
-        {view === 'links' ? (
+        {project.guis.length > 1 && (
+          <div className="view-switch">
+            <div className="seg" role="group" aria-label="Ansicht wählen">
+              <button type="button" className={view === 'edit' ? 'on' : ''} aria-pressed={view === 'edit'}
+                onClick={() => setView('edit')}>Bearbeiten</button>
+              <button type="button" className={view === 'links' ? 'on' : ''} aria-pressed={view === 'links'}
+                onClick={() => setView('links')} title="Zeigt, welche GUIs per open:-Aktion aufeinander verweisen">Verknüpfungen</button>
+            </div>
+          </div>
+        )}
+        {project.guis.length > 1 && view === 'links' ? (
           <LinkView project={project} onOpen={(i) => { switchGui(i); setView('edit'); }} />
         ) : (
           <>
@@ -602,15 +734,17 @@ export default function App() {
               <input className="mc-title mc-title-input" value={gui.title} placeholder={gui.id}
                 aria-label="Titel der GUI (wird im Spiel oben angezeigt)"
                 onChange={(e) => patchGui({ title: e.target.value })} />
-              <Grid cells={cells} onCellDown={onCellDown} onCellEnter={onCellEnter} onCellContext={onCellContext} />
+              <Grid cells={cells} onCellDown={onCellDown} onCellEnter={onCellEnter} onCellContext={onCellContext} pack={pack} />
             </div>
             <p className="muted hint section-note">{hint}</p>
           </div>
-          <Preview gui={gui} resolved={resolved} />
+          <Preview gui={gui} resolved={resolved} pack={pack} />
           </>
         )}
         </section>
 
+        <Resizer className="resizer-right" side="right" label="Breite des Inspektors" width={columns.right} min={RIGHT_MIN} max={RIGHT_MAX}
+          onChange={(right) => setColumns((c) => ({ ...c, right }))} />
         <aside className="panel">
           <div className="tabs">
             <button type="button" className={inspector === 'gui' ? 'on' : ''} onClick={() => setInspector('gui')}>GUI</button>
@@ -622,6 +756,7 @@ export default function App() {
               <ItemPanel
                 item={selected}
                 gui={gui}
+                pack={pack}
                 onChange={(patch) => patchItem(selected.id, patch)}
                 onDelete={() => removeItem(selected.id)}
               />

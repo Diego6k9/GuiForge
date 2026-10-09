@@ -16,6 +16,8 @@ export interface EditorItem {
   lore: string[];
   glint: boolean | null;
   hideTooltip: boolean;
+  /** Hides weapon/armor attribute lines in the tooltip. Default true. */
+  hideAttributes: boolean;
   locked: boolean;
   action: string;
   /** Texture hash of a player head, empty if unset. */
@@ -79,7 +81,7 @@ export function newItem(gui: EditorGui): EditorItem {
   while (used.has(`item-${n}`)) n += 1;
   return {
     id: newId('item'), key: `item-${n}`, pattern: null, slots: [], material: 'minecraft:stone', amount: 1,
-    name: '', lore: [], glint: null, hideTooltip: false, locked: true, action: '', skin: '',
+    name: '', lore: [], glint: null, hideTooltip: false, hideAttributes: true, locked: true, action: '', skin: '',
   };
 }
 
@@ -379,6 +381,7 @@ export function toFormat(gui: EditorGui): Record<string, unknown> {
     if (item.lore.length) json.lore = item.lore;
     if (item.glint !== null) json.glint = item.glint;
     if (item.hideTooltip) json.hideTooltip = true;
+    if (!item.hideAttributes) json.hideAttributes = false;
     json.locked = item.locked;
     if (item.action.trim()) json.action = item.action;
     if (item.skin) json.skin = skinHashOf(item.skin) ?? item.skin;
@@ -421,6 +424,7 @@ export function fromFormat(json: any): EditorGui {
       lore: (raw.lore ?? []).map(String),
       glint: typeof raw.glint === 'boolean' ? raw.glint : null,
       hideTooltip: raw.hideTooltip === true,
+      hideAttributes: raw.hideAttributes !== false,
       locked: raw.locked !== false,
       action: String(raw.action ?? ''),
       skin: skinHashOf(String(raw.skin ?? '')) ?? String(raw.skin ?? ''),

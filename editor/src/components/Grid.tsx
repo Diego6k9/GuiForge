@@ -1,6 +1,11 @@
+import type { ResourcePack } from '../assets/resourcePack';
+import { SlotContent } from './SlotIcon';
+
 export interface CellView {
   slot: number;
   label: string;
+  /** Material id without minecraft:, used for the icon from the resource pack. */
+  material?: string;
   color?: string;
   title?: string;
   selected: boolean;
@@ -12,14 +17,15 @@ export interface CellView {
 
 interface GridProps {
   cells: CellView[];
-  onCellDown: (slot: number) => void;
+  onCellDown: (slot: number, alt: boolean) => void;
   onCellEnter: (slot: number) => void;
   onCellContext?: (slot: number, x: number, y: number) => void;
   disabled?: boolean;
+  pack?: ResourcePack | null;
 }
 
 /** Inventory-style 9-column grid. Press and drag paints a rectangle; the app decides what that means. */
-export function Grid({ cells, onCellDown, onCellEnter, onCellContext, disabled }: GridProps) {
+export function Grid({ cells, onCellDown, onCellEnter, onCellContext, disabled, pack = null }: GridProps) {
   return (
     <div className="mc-grid editor-grid" role="grid">
       {cells.map((cell) => {
@@ -39,7 +45,7 @@ export function Grid({ cells, onCellDown, onCellEnter, onCellContext, disabled }
             onMouseDown={(e) => {
               if (e.button !== 0 || disabled) return;
               e.preventDefault();
-              onCellDown(cell.slot);
+              onCellDown(cell.slot, e.altKey);
             }}
             onMouseEnter={() => onCellEnter(cell.slot)}
             onContextMenu={(e) => {
@@ -48,7 +54,7 @@ export function Grid({ cells, onCellDown, onCellEnter, onCellContext, disabled }
             }}
             disabled={disabled}
           >
-            {cell.label}
+            <SlotContent pack={pack} id={cell.material} label={cell.label} />
           </button>
         );
       })}

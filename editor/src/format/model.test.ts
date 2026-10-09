@@ -224,3 +224,20 @@ describe('item keys from names', () => {
     expect(derivedKey('   ', items, 'c')).toBeNull();
   });
 });
+
+describe('hideAttributes', () => {
+  it('is omitted from the format by default and written as false when turned off', () => {
+    const item = { ...newItem(emptyGui()), key: 'sword', material: 'minecraft:diamond_sword' };
+    const shown = toFormat(gui({ items: [item] })) as any;
+    expect(shown.items[0].hideAttributes).toBeUndefined();
+
+    const visible = toFormat(gui({ items: [{ ...item, hideAttributes: false }] })) as any;
+    expect(visible.items[0].hideAttributes).toBe(false);
+  });
+
+  it('reads a missing value as true and keeps an explicit false', () => {
+    const g = fromFormat({ formatVersion: 1, id: 'g', title: 't', rows: 3, items: [{ key: 'a', slots: [0], material: 'minecraft:stone' }, { key: 'b', slots: [1], material: 'minecraft:stone', hideAttributes: false }] });
+    expect(g.items[0].hideAttributes).toBe(true);
+    expect(g.items[1].hideAttributes).toBe(false);
+  });
+});

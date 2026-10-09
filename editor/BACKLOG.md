@@ -21,7 +21,7 @@ Schrittweise Umsetzung. Status: ✅ umgesetzt · 🟡 in Arbeit · ⬜ offen · 
 | 8 | Keys aus Namen ableiten | ✅ | Vorschlag nur, solange der Key nicht manuell geändert wurde Umgesetzt: Key folgt dem Namen, solange er automatisch ist (leer, `item-N` oder Slug des alten Namens). |
 | 9 | Material-Icon-Picker statt Freitext-Datalist | ✅ | Mit Suche und Vorschau |
 | 10 | MiniMessage-Farbpalette für Namen und Lore | ✅ | Erzeugt nur gültige Tags. Umgesetzt als Rich-Text-Feld (`components/RichField.tsx`): markierter Text wird direkt eingefärbt, MiniMessage entsteht im Hintergrund. |
-| 11 | Mehr Tastenkürzel (Entfernen, Duplizieren, Pfeiltasten, Alt+Klick Pipette) | ⬜ | |
+| 11 | Mehr Tastenkürzel (Entfernen, Duplizieren, Pfeiltasten, Alt+Klick Pipette) | ✅ | Pfeiltasten verschieben das ausgewählte Item um ein Feld (Rückgängig möglich), Alt+Klick auf ein Item kopiert dessen Material in das ausgewählte Item. |
 | 12 | Autosave-Status anzeigen („gespeichert“ / „ungespeichert“) | ✅ | Autosave läuft bereits über localStorage |
 | 13 | Vorlagen (leeres Shop-Raster, Paginierte Liste, Bestätigungs-Dialog) | ✅ | |
 | 14 | File System Access API für Export/Import | ✅ | Fallback: Download wie bisher. Umgesetzt: „Alle exportieren“ in einen Ordner, Einzel-Export mit Speichern-Dialog, Import mit Öffnen-Dialog. Ohne API greifen Download bzw. Datei-Auswahl. |
