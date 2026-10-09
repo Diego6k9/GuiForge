@@ -10,9 +10,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -53,6 +56,9 @@ public final class Gui<T> {
     private List<T> contents = List.of();
     private Function<T, ItemStack> renderer;
     private BiConsumer<Player, T> contentClickHandler;
+    private final List<Consumer<Player>> openHandlers = new ArrayList<>();
+    private final List<Consumer<Player>> closeHandlers = new ArrayList<>();
+    private final Set<GuiSession> openSessions = new HashSet<>();
 
     Gui(GuiManager manager, GuiDefinition definition) {
         this.manager = manager;
@@ -84,7 +90,7 @@ public final class Gui<T> {
     }
 
     /**
-     * Registers a value for {@code {token}} in item names and lore. The value is inserted as plain text,
+     * Registers a value for {@code {token}} in item names, lore and the GUI title. The value is inserted as plain text,
      * so player input cannot inject MiniMessage tags. Unknown tokens are left as they are.
      */
     public Gui<T> placeholder(String token, Function<Player, String> value) {
@@ -109,6 +115,34 @@ public final class Gui<T> {
         return this;
     }
 
+    /** Runs when a viewer opens this GUI. Several handlers can be added. */
+    public Gui<T> onOpen(Consumer<Player> handler) {
+        openHandlers.add(Objects.requireNonNull(handler, "handler"));
+        return this;
+    }
+
+    /** Runs when a viewer closes this GUI, also when it is replaced by another GUI or the player leaves. */
+    public Gui<T> onClose(Consumer<Player> handler) {
+        closeHandlers.add(Objects.requireNonNull(handler, "handler"));
+        return this;
+    }
+
+    /**
+     * A copy of the fixed item with this key, as the layout defines it. Placeholders are not filled in;
+     * use {@link #itemFor} for per-player content. Empty if the GUI has no fixed item with this key.
+     */
+    public Optional<ItemStack> item(String key) {
+        FixedItem fixed = fixedByKey.get(key);
+        return fixed == null ? Optional.empty() : Optional.of(fixed.template().clone());
+    }
+
+    /** Re-renders the items for every viewer who has this GUI open. Call it on the main thread. */
+    public void refresh() {
+        for (GuiSession session : List.copyOf(openSessions)) {
+            session.refresh();
+        }
+    }
+
     /** Opens this GUI for a player with fresh state (page 0). */
     public void open(Player player) {
         new GuiSession(this, manager, player).open();
@@ -121,6 +155,26 @@ public final class Gui<T> {
     /** Converts MiniMessage to a component without Minecraft's default italics for names and lore. */
     public static Component text(String miniMessage) {
         return MINI.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
+    }
+
+    void dispatchOpen(Player player) {
+        for (Consumer<Player> handler : openHandlers) {
+            handler.accept(player);
+        }
+    }
+
+    void dispatchClose(Player player) {
+        for (Consumer<Player> handler : closeHandlers) {
+            handler.accept(player);
+        }
+    }
+
+    void track(GuiSession session) {
+        openSessions.add(session);
+    }
+
+    void untrack(GuiSession session) {
+        openSessions.remove(session);
     }
 
     GuiDefinition definition() {
@@ -256,7 +310,8 @@ public final class Gui<T> {
         return profile;
     }
 
-    private String resolve(String template, Player viewer) {
+    /** Fills {token}s with the values of this viewer. Also used for the GUI title. */
+    String resolve(String template, Player viewer) {
         if (viewer == null || placeholders.isEmpty()) {
             return template;
         }

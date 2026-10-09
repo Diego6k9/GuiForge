@@ -18,7 +18,7 @@ interface ItemPanelProps {
 /** Page actions only mean something in a paginated GUI; open:<id> points at one of the other GUIs. */
 function actionsFor(gui: EditorGui, otherGuiIds: string[]): string[] {
   const base = gui.paginated ? ['', 'close', 'next-page', 'prev-page'] : ['', 'close'];
-  return [...base, ...otherGuiIds.map((id) => `open:${id}`)];
+  return [...base, ...otherGuiIds.map((id) => `open:${id}`), 'sound:', 'message:'];
 }
 
 export function ItemPanel({ item, gui, otherGuiIds, pack, onChange, onDelete }: ItemPanelProps) {
@@ -119,7 +119,7 @@ export function ItemPanel({ item, gui, otherGuiIds, pack, onChange, onDelete }: 
         <input
           list="actions"
           value={item.action}
-          placeholder={gui.paginated ? 'close, next-page, prev-page, open:<id>' : 'close, open:<id>'}
+          placeholder={gui.paginated ? 'close, next-page, prev-page, open:<id>, sound:<name>, message:<text>' : 'close, open:<id>, sound:<name>, message:<text>'}
           onChange={(e) => onChange({ action: e.target.value.trim() })}
         />
         <datalist id="actions">
