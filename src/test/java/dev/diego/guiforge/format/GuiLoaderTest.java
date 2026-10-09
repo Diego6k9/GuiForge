@@ -1,11 +1,8 @@
 package dev.diego.guiforge.format;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class GuiLoaderTest {
 
@@ -16,11 +13,20 @@ class GuiLoaderTest {
         return assertThrows(IllegalArgumentException.class, () -> GuiLoader.parse(json));
     }
 
+    private static boolean contains(int[] slots, int value) {
+        for (int slot : slots) {
+            if (slot == value) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Test
     void parsesMinimalGuiAndDefaultsType() {
         GuiDefinition def = GuiLoader.parse(HEAD + "\"items\":[{\"key\":\"a\",\"slots\":[4]," + STONE + "}]}");
         assertEquals("chest", def.type);
-        assertArrayEquals(new int[] {4}, def.items.get(0).resolvedSlots);
+        assertArrayEquals(new int[]{4}, def.items.getFirst().resolvedSlots);
     }
 
     @Test
@@ -103,12 +109,12 @@ class GuiLoaderTest {
         // 3 rows: 27 slots, interior is row 1, columns 1..7 = 7 slots, so the ring has 20.
         GuiDefinition def = GuiLoader.parse(HEAD
                 + "\"items\":[{\"key\":\"frame\",\"slots\":\"border\"," + STONE + "}]}");
-        int[] slots = def.items.get(0).resolvedSlots;
+        int[] slots = def.items.getFirst().resolvedSlots;
         assertEquals(20, slots.length);
-        for (int slot : new int[] {0, 8, 9, 17, 18, 26}) {
+        for (int slot : new int[]{0, 8, 9, 17, 18, 26}) {
             assertTrue(contains(slots, slot), "expected border slot " + slot);
         }
-        assertTrue(!contains(slots, 13), "interior slot 13 must not be in the border");
+        assertFalse(contains(slots, 13), "interior slot 13 must not be in the border");
     }
 
     @Test
@@ -118,7 +124,7 @@ class GuiLoaderTest {
                 + "{\"key\":\"frame\",\"slots\":\"border\"," + STONE + "}]}");
         int[] frame = def.items.get(1).resolvedSlots;
         assertEquals(19, frame.length);
-        assertTrue(!contains(frame, 0), "slot 0 is explicitly taken and must not be given to the pattern");
+        assertFalse(contains(frame, 0), "slot 0 is explicitly taken and must not be given to the pattern");
     }
 
     @Test
@@ -127,17 +133,8 @@ class GuiLoaderTest {
         GuiDefinition def = GuiLoader.parse("{\"formatVersion\":1,\"id\":\"t\",\"rows\":1,"
                 + "\"items\":[{\"key\":\"bg\",\"slots\":\"empty\"," + STONE + "}],"
                 + "\"content\":{\"slots\":[2,3]}}");
-        int[] bg = def.items.get(0).resolvedSlots;
+        int[] bg = def.items.getFirst().resolvedSlots;
         assertEquals(7, bg.length);
         assertTrue(!contains(bg, 2) && !contains(bg, 3), "content slots must stay free of background items");
-    }
-
-    private static boolean contains(int[] slots, int value) {
-        for (int slot : slots) {
-            if (slot == value) {
-                return true;
-            }
-        }
-        return false;
     }
 }
