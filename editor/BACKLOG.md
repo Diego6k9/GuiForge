@@ -18,22 +18,22 @@ Schrittweise Umsetzung. Status: ✅ umgesetzt · 🟡 in Arbeit · ⬜ offen · 
 | # | Feature | Status | Notizen |
 |---|---------|--------|---------|
 | 7 | Rechtsklick-Verknüpfung (Item → GUI öffnen: neu / bestehend) | ✅ | Gehört zum Multi-GUI-Projekt, siehe Phase 3 |
-| 8 | Keys aus Namen ableiten | ⬜ | Vorschlag nur, solange der Key nicht manuell geändert wurde |
+| 8 | Keys aus Namen ableiten | ✅ | Vorschlag nur, solange der Key nicht manuell geändert wurde Umgesetzt: Key folgt dem Namen, solange er automatisch ist (leer, `item-N` oder Slug des alten Namens). |
 | 9 | Material-Icon-Picker statt Freitext-Datalist | ✅ | Mit Suche und Vorschau |
-| 10 | MiniMessage-Farbpalette für Namen und Lore | ⬜ | Erzeugt nur gültige Tags |
+| 10 | MiniMessage-Farbpalette für Namen und Lore | ✅ | Erzeugt nur gültige Tags. Umgesetzt als Rich-Text-Feld (`components/RichField.tsx`): markierter Text wird direkt eingefärbt, MiniMessage entsteht im Hintergrund. |
 | 11 | Mehr Tastenkürzel (Entfernen, Duplizieren, Pfeiltasten, Alt+Klick Pipette) | ⬜ | |
 | 12 | Autosave-Status anzeigen („gespeichert“ / „ungespeichert“) | ✅ | Autosave läuft bereits über localStorage |
 | 13 | Vorlagen (leeres Shop-Raster, Paginierte Liste, Bestätigungs-Dialog) | ✅ | |
-| 14 | File System Access API für Export/Import | ⬜ | Fallback: Download wie bisher |
+| 14 | File System Access API für Export/Import | ✅ | Fallback: Download wie bisher. Umgesetzt: „Alle exportieren“ in einen Ordner, Einzel-Export mit Speichern-Dialog, Import mit Öffnen-Dialog. Ohne API greifen Download bzw. Datei-Auswahl. |
 
 ## Phase 3 – Projekte
 
 | # | Feature | Status | Notizen |
 |---|---------|--------|---------|
 | 15 | Mehrere GUIs in einem Projekt | ✅ | Voraussetzung für Verknüpfungen |
-| 16 | Verknüpfungsansicht (GUI-Graph mit `open:<id>`-Kanten) | ⬜ | |
+| 16 | Verknüpfungsansicht (GUI-Graph mit `open:<id>`-Kanten) | ✅ | Umgesetzt als Umschalter „Verknüpfungen“ neben den GUI-Tabs; Klick auf eine GUI öffnet sie. Fehlende Ziele werden aufgelistet. |
 | 17 | Thumbnails der GUIs in der Projektliste | ⏸ | Hängt an der Texturfrage |
-| 18 | Minecraft-artiger Hover-Tooltip in der Vorschau (Name, Lore, Rahmen wie im Spiel) | ⬜ | Heute zeigt die Vorschau nur den nativen Browser-Tooltip (Key + Lore, ohne Formatierung). Ziel: dunkler MC-Tooltip mit farbigem Namen (MiniMessage), Lore-Zeilen und lila Rahmen. Die Vorschau bleibt sonst unverändert. |
+| 18 | Minecraft-artiger Hover-Tooltip in der Vorschau (Name, Lore, Rahmen wie im Spiel) | ✅ | Heute zeigt die Vorschau nur den nativen Browser-Tooltip (Key + Lore, ohne Formatierung). Ziel: dunkler MC-Tooltip mit farbigem Namen (MiniMessage), Lore-Zeilen und lila Rahmen. Die Vorschau bleibt sonst unverändert. Umgesetzt: MiniMessage-Parser (`format/minimessage.ts`), Tooltip am Cursor, `hideTooltip` wird respektiert. |
 
 ## Geparkt
 

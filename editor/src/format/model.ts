@@ -1,3 +1,5 @@
+import { plainText } from './minimessage';
+
 // Editor-side model of a GUI and its conversion to/from GuiForge format v1.
 // Validation and slot resolution mirror dev.diego.guiforge.format.GuiLoader.
 
@@ -150,6 +152,38 @@ export function linkTarget(action: string): string | null {
 export function sanitizeGuiId(text: string): string {
   const cleaned = text.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
   return cleaned || 'gui';
+}
+
+/** Plain key text from an item name: no tags, no umlauts, a-z 0-9 and _ only. */
+export function slugKey(name: string): string {
+  const plain = plainText(name)
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return plain.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+/** Whether a key still looks automatic: empty, the default `item-N`, or the slug of the name it came from. */
+export function isAutoKey(key: string, nameItWasDerivedFrom: string): boolean {
+  return key === '' || /^item-\d+$/.test(key) || key === slugKey(nameItWasDerivedFrom);
+}
+
+/** A key derived from the name that no other item in the GUI uses. Null when the name yields nothing. */
+export function derivedKey(name: string, items: EditorItem[], itemId: string): string | null {
+  const root = slugKey(name);
+  if (!root) return null;
+  const taken = new Set(items.filter((i) => i.id !== itemId).map((i) => i.key));
+  let key = root;
+  let n = 2;
+  while (taken.has(key)) {
+    key = `${root}_${n}`;
+    n += 1;
+  }
+  return key;
 }
 
 /** A GUI id that no other GUI in the project uses yet. */

@@ -213,3 +213,112 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .ctx-menu button { text-align: left; background: none; border: 0; color: inherit; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
 .ctx-menu button:hover { background: var(--accent-soft, #2a3a52); }
 .ctx-title { font-size: 12px; color: var(--muted, #8a8f98); padding: 4px 10px; }
+
+/* Item tooltip in the preview, styled after the in-game tooltip. */
+.mc-tooltip {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  max-width: 260px;
+  padding: 6px 8px;
+  background: rgba(16, 0, 16, 0.94);
+  border: 2px solid #2a0a5c;
+  box-shadow: inset 0 0 0 1px #5a14c8, 0 4px 14px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.25;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.mc-tip-line {
+  min-height: 1em;
+}
+.mc-tip-name + .mc-tip-line {
+  margin-top: 3px;
+}
+
+/* MiniMessage format bar under name and lore fields. */
+.format-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 4px;
+}
+.format-colors {
+  display: grid;
+  grid-template-columns: repeat(8, 16px);
+  gap: 4px;
+}
+.format-swatch {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+.format-swatch:hover {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.format-decor {
+  display: flex;
+  gap: 4px;
+}
+.format-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 0;
+  line-height: 1;
+  background: #2a2e38;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.format-btn:hover { border-color: var(--accent); }
+.format-btn b, .format-btn i, .format-btn u, .format-btn s { line-height: 1; }
+
+/* Rich text field: looks like the other inputs, but shows the colours instead of the tags. */
+.rich-field { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
+.rich-label { color: var(--muted); }
+.rich {
+  background: #15171c;
+  color: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  min-height: 34px;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.rich:focus { border-color: var(--accent); }
+.rich-multi { min-height: 96px; }
+.banner.info { background: #1b2a3a; color: #9cc3ff; }
+
+/* Link view: GUIs on a circle, open: links as arrows. */
+.gui-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.gui-bar > .gui-tabs { min-width: 0; }
+.links-toggle { margin-bottom: 8px; flex: none; }
+.link-view .link-svg { width: 100%; height: auto; display: block; }
+.link-svg line, .link-svg path { stroke: #8b90a0; stroke-width: 1.5; fill: none; }
+.link-svg text { fill: var(--muted); font-size: 11px; paint-order: stroke; stroke: var(--panel); stroke-width: 4px; }
+.link-node rect { fill: #2a2e38; stroke: var(--line); stroke-width: 1.5; cursor: pointer; }
+.link-node:hover rect, .link-node:focus-visible rect { stroke: var(--accent); outline: none; }
+.link-node-title { fill: var(--text); font-size: 13px; font-weight: 700; pointer-events: none; stroke: none; }
+.link-node-meta { fill: var(--muted); font-size: 11px; pointer-events: none; stroke: none; }
+.link-broken { margin: 12px 0 0; padding-left: 18px; font-size: 13px; }
+
+/* Draggable GUI tabs. */
+.gui-tab[draggable="true"] { cursor: grab; }
+.gui-tab.dragging { opacity: 0.45; }
+.gui-tab.drop-target { outline: 2px dashed var(--accent); outline-offset: 2px; }

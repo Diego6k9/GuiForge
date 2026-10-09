@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayMaterial, emptyGui, fromFormat, linkProblems, newItem, normalizeMaterial, problems, projectFromStorage, projectToStorage, renameGuiEverywhere, resolveSlots, roleOf, sanitizeGuiId, skinHashOf, TEMPLATES, toFormat, uniqueGuiId, validate, type EditorGui } from './model';
+import { derivedKey, isAutoKey, slugKey, displayMaterial, emptyGui, fromFormat, linkProblems, newItem, normalizeMaterial, problems, projectFromStorage, projectToStorage, renameGuiEverywhere, resolveSlots, roleOf, sanitizeGuiId, skinHashOf, TEMPLATES, toFormat, uniqueGuiId, validate, type EditorGui } from './model';
 
 function gui(partial: Partial<EditorGui>): EditorGui {
   return { ...emptyGui(), ...partial };
@@ -172,5 +172,55 @@ describe('projects and links', () => {
     expect(projectFromStorage(single).guis.map((g) => g.id)).toEqual(['solo']);
     const stored = projectToStorage({ guis: [gui({ id: 'a' }), gui({ id: 'b' })] });
     expect(projectFromStorage(JSON.parse(JSON.stringify(stored))).guis.map((g) => g.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe('item keys from names', () => {
+  it('slugs plain names, umlauts and tags', () => {
+    expect(slugKey('Größer Diamant!')).toBe('groesser_diamant');
+    expect(slugKey('<gold><bold>Café Ü</bold></gold>')).toBe('cafe_ue');
+    expect(slugKey('  ')).toBe('');
+  });
+
+  it('keeps the key when it was typed by hand', () => {
+    expect(isAutoKey('my_key', 'Diamant')).toBe(false);
+    expect(isAutoKey('item-3', 'Diamant')).toBe(true);
+    expect(isAutoKey('diamant', 'Diamant')).toBe(true);
+    expect(isAutoKey('', '')).toBe(true);
+  });
+
+  it('makes derived keys unique within the GUI', () => {
+    const items = [
+      { ...newItem(emptyGui()), id: 'a', key: 'diamant' },
+      { ...newItem(emptyGui()), id: 'b', key: 'diamant_2' },
+    ];
+    expect(derivedKey('Diamant', items, 'c')).toBe('diamant_3');
+    expect(derivedKey('Diamant', items, 'a')).toBe('diamant');
+    expect(derivedKey('   ', items, 'c')).toBeNull();
+  });
+});
+
+describe('item keys from names', () => {
+  it('slugs plain names, umlauts and tags', () => {
+    expect(slugKey('Größer Diamant!')).toBe('groesser_diamant');
+    expect(slugKey('<gold><bold>Café Ü</bold></gold>')).toBe('cafe_ue');
+    expect(slugKey('  ')).toBe('');
+  });
+
+  it('keeps the key when it was typed by hand', () => {
+    expect(isAutoKey('my_key', 'Diamant')).toBe(false);
+    expect(isAutoKey('item-3', 'Diamant')).toBe(true);
+    expect(isAutoKey('diamant', 'Diamant')).toBe(true);
+    expect(isAutoKey('', '')).toBe(true);
+  });
+
+  it('makes derived keys unique within the GUI', () => {
+    const items = [
+      { ...newItem(emptyGui()), id: 'a', key: 'diamant' },
+      { ...newItem(emptyGui()), id: 'b', key: 'diamant_2' },
+    ];
+    expect(derivedKey('Diamant', items, 'c')).toBe('diamant_3');
+    expect(derivedKey('Diamant', items, 'a')).toBe('diamant');
+    expect(derivedKey('   ', items, 'c')).toBeNull();
   });
 });

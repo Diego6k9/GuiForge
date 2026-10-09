@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { RichField } from './RichField';
 import {
-  displayMaterial, MATERIALS, normalizeMaterial, skinHashOf, skinUrl, type EditorGui, type EditorItem, type Pattern,
+  derivedKey, displayMaterial, isAutoKey, MATERIALS, normalizeMaterial, skinHashOf, skinUrl, type EditorGui, type EditorItem, type Pattern,
 } from '../format/model';
 
 interface ItemPanelProps {
@@ -20,6 +21,15 @@ export function ItemPanel({ item, gui, onChange, onDelete }: ItemPanelProps) {
   const setSlotMode = (value: string) => {
     if (value === 'manual') onChange({ pattern: null });
     else onChange({ pattern: value as Pattern, slots: [] });
+  };
+  // While the key is still automatic, it follows the name; a key typed by hand stays as it is.
+  const changeName = (name: string) => {
+    const patch: Partial<EditorItem> = { name };
+    if (isAutoKey(item.key, item.name)) {
+      const key = derivedKey(name, gui.items, item.id);
+      if (key) patch.key = key;
+    }
+    onChange(patch);
   };
   const keyTaken = gui.items.some((other) => other.id !== item.id && other.key === item.key);
 
@@ -97,19 +107,14 @@ export function ItemPanel({ item, gui, onChange, onDelete }: ItemPanelProps) {
         </label>
       </div>
 
-      <label>
-        Name (MiniMessage)
-        <input value={item.name} onChange={(e) => onChange({ name: e.target.value })} />
-      </label>
+      <RichField label="Name" value={item.name} onChange={changeName} />
 
-      <label>
-        Lore (eine Zeile pro Eintrag)
-        <textarea
-          rows={4}
-          value={item.lore.join('\n')}
-          onChange={(e) => onChange({ lore: e.target.value.split('\n') })}
-        />
-      </label>
+      <RichField
+        label="Lore (eine Zeile pro Eintrag)"
+        multiline
+        value={item.lore.join('\n')}
+        onChange={(text) => onChange({ lore: text.split('\n') })}
+      />
 
       {item.material.trim() === 'minecraft:player_head' || item.skin ? (
         <label>

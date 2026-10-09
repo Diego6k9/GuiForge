@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useReducer, useState, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import {
   emptyGui, emptyProject, fromFormat, linkProblems, linkTarget, newId, newItem, problems, projectFromStorage,
-  projectToStorage, renameGuiEverywhere, resolveSlots, roleOf, TEMPLATES, toFormat, uniqueGuiId, ROLE_COLORS,
+  projectToStorage, renameGuiEverywhere, resolveSlots, roleOf, TEMPLATES, uniqueGuiId, ROLE_COLORS,
   type EditorGui, type EditorItem, type Project,
 } from './format/model';
 import { historyReducer, type History } from './history';
+import {
+  canPickFolder, canUseFileDialogs, downloadFiles, exportFiles, pickJsonText, projectProblemCount, saveFile, saveToFolder,
+} from './exportFiles';
 import { Grid, type CellView } from './components/Grid';
 import { ItemPanel } from './components/ItemPanel';
 import { GuiPanel } from './components/GuiPanel';
 import { Preview } from './components/Preview';
+import { LinkView } from './components/LinkView';
 
 const STORAGE_KEY = 'guiforge-project-v2';
 const LEGACY_KEY = 'guiforge-editor-v1';
@@ -61,6 +65,7 @@ export default function App() {
   }));
   const project = history.present;
   const [activeIndex, setActiveIndex] = useState(0);
+  const [view, setView] = useState<'edit' | 'links'>('edit');
   const index = Math.min(activeIndex, project.guis.length - 1);
   const gui = project.guis[index];
   const [menu, setMenu] = useState<{ x: number; y: number; itemId: string } | null>(null);
@@ -69,12 +74,23 @@ export default function App() {
   const [tool, setTool] = useState<Tool>('assign');
   const [drag, setDrag] = useState<{ start: number; current: number } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [tabDrag, setTabDrag] = useState<{ from: number; over: number | null } | null>(null);
+
+  // Status messages disappear on their own; errors that need action stay until the next change.
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
   const [saveState, setSaveState] = useState<{ ok: boolean; at: Date | null }>({ ok: true, at: null });
 
   const selected = selectedId ? gui.items.find((i) => i.id === selectedId) ?? null : null;
   const resolved = useMemo(() => resolveSlots(gui), [gui]);
   const found = useMemo(() => [...problems(gui), ...linkProblems(project, gui)], [gui, project]);
   const errorCount = found.length;
+  const projectErrors = useMemo(() => projectProblemCount(project), [project]);
   const errorItemIds = useMemo(() => new Set(found.flatMap((p) => (p.itemId ? [p.itemId] : []))), [found]);
   const itemById = useMemo(() => new Map(gui.items.map((i) => [i.id, i])), [gui.items]);
   const occupant = useMemo(() => {
@@ -162,6 +178,17 @@ export default function App() {
   }
 
   // --- GUIs in the project -------------------------------------------------------------
+
+  /** Moves a GUI tab to another position. The GUI that is open stays open. */
+  function moveGui(from: number, to: number) {
+    if (from === to) return;
+    const current = project.guis[index];
+    const guis = [...project.guis];
+    const [moved] = guis.splice(from, 1);
+    guis.splice(to, 0, moved);
+    commitProject({ guis });
+    setActiveIndex(guis.indexOf(current));
+  }
 
   function switchGui(i: number) {
     setActiveIndex(i);
@@ -343,28 +370,70 @@ export default function App() {
     return () => window.removeEventListener('mouseup', finish);
   });
 
-  function exportFile() {
+  async function exportFile() {
     if (errorCount) return;
-    const blob = new Blob([JSON.stringify(toFormat(gui), null, 2) + '\n'], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${gui.id || 'gui'}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const [file] = exportFiles({ guis: [gui] });
+    try {
+      if (await saveFile(file)) setNotice(`Gespeichert: ${file.name}`);
+    } catch (err) {
+      setNotice(`Export fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** All GUIs of the project as separate files: into a chosen folder, or as downloads as a fallback. */
+  async function exportAll() {
+    if (projectProblemCount(project) > 0) return;
+    const files = exportFiles(project);
+    try {
+      if (canPickFolder()) {
+        const saved = await saveToFolder(files);
+        if (saved) setNotice(`${files.length} GUI-Dateien gespeichert.`);
+      } else {
+        downloadFiles(files);
+        setNotice(`${files.length} Dateien werden heruntergeladen.`);
+      }
+    } catch (err) {
+      setNotice(`Export fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** Imports a GUI from JSON text as an additional GUI of the project and opens it. Nothing is replaced. */
+  function importText(text: string) {
+    try {
+      const imported = fromFormat(JSON.parse(text));
+      const id = uniqueGuiId(project.guis, imported.id);
+      // Renaming also rewrites open: links that point at the imported GUI's own id.
+      const guis = renameGuiEverywhere([...project.guis, imported], project.guis.length, id, imported.id);
+      commitProject({ guis });
+      setActiveIndex(guis.length - 1);
+      setView('edit');
+      select(null);
+      setImportError(null);
+      setNotice(id === imported.id ? `GUI „${id}“ importiert.` : `GUI als „${id}“ importiert, weil „${imported.id}“ schon existiert.`);
+    } catch (err) {
+      setImportError(`Import fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** Opens a file dialog where the browser supports it; otherwise the hidden file input does the job. */
+  async function importFromDisk() {
+    if (!canUseFileDialogs()) {
+      fileInput.current?.click();
+      return;
+    }
+    try {
+      const text = await pickJsonText();
+      if (text !== null) importText(text);
+    } catch (err) {
+      setImportError(`Import fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   async function importFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    try {
-      commit(fromFormat(JSON.parse(await file.text())));
-      select(null);
-      setImportError(null);
-    } catch (err) {
-      setImportError(`Import fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    importText(await file.text());
   }
 
   function applyTemplate(id: string) {
@@ -417,13 +486,22 @@ export default function App() {
           onClick={() => dispatch({ type: 'undo' })} title="Rückgängig (Strg+Z)">↶ Undo</button>
         <button type="button" className="btn" disabled={history.future.length === 0}
           onClick={() => dispatch({ type: 'redo' })} title="Wiederholen (Strg+Shift+Z)">↷ Redo</button>
-        <label className="btn">
+        <button type="button" className="btn" onClick={() => void importFromDisk()} title="GUI aus einer .json-Datei laden">
           Importieren
-          <input type="file" accept=".json,application/json" hidden onChange={importFile} />
-        </label>
+        </button>
+        <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={importFile} />
         {/* aria-disabled instead of disabled: disabled buttons swallow the title tooltip that explains why. */}
+        {project.guis.length > 1 && (
+          <button type="button" className={`btn${projectErrors ? ' is-blocked' : ''}`} aria-disabled={projectErrors > 0}
+            onClick={() => { if (!projectErrors) void exportAll(); }}
+            title={projectErrors
+              ? `Export gesperrt: ${projectErrors} Problem(e) in den GUIs beheben`
+              : canPickFolder() ? 'Jede GUI als eigene .json in einen Ordner speichern' : 'Jede GUI als eigene .json herunterladen'}>
+            Alle exportieren ({project.guis.length})
+          </button>
+        )}
         <button type="button" className={`btn primary${errorCount ? ' is-blocked' : ''}`} aria-disabled={errorCount > 0}
-          onClick={() => { if (!errorCount) exportFile(); }}
+          onClick={() => { if (!errorCount) void exportFile(); }}
           title={errorCount ? `Export gesperrt: ${errorCount} Problem(e) beheben (siehe Liste unten)` : 'Als Format-v1-JSON exportieren'}>
           {errorCount ? `Exportieren (${errorCount} Fehler)` : 'Exportieren (.json)'}
         </button>
@@ -436,6 +514,7 @@ export default function App() {
       </header>
 
       {importError && <div className="banner error">{importError}</div>}
+      {notice && <div className="banner info" role="status">{notice}</div>}
 
       <main className="workspace">
         <aside className="panel">
@@ -465,9 +544,14 @@ export default function App() {
         <nav className="gui-bar" aria-label="GUIs im Projekt">
           <div className="gui-tabs">
             {project.guis.map((g, i) => (
-              <span key={i} className={`gui-tab${i === index ? ' on' : ''}`}>
+              <span key={i} className={`gui-tab${i === index ? ' on' : ''}${tabDrag?.over === i ? ' drop-target' : ''}${tabDrag?.from === i ? ' dragging' : ''}`}
+                draggable
+                onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', g.id); setTabDrag({ from: i, over: null }); }}
+                onDragOver={(e) => { if (tabDrag) { e.preventDefault(); if (tabDrag.over !== i) setTabDrag({ ...tabDrag, over: i }); } }}
+                onDrop={(e) => { e.preventDefault(); if (tabDrag) moveGui(tabDrag.from, i); setTabDrag(null); }}
+                onDragEnd={() => setTabDrag(null)}>
                 <button type="button" onClick={() => switchGui(i)} aria-current={i === index ? 'true' : undefined}
-                  title={`GUI „${g.id}“: ${g.rows} Zeilen${g.paginated ? ', paginiert' : ''}`}>
+                  title={`GUI „${g.id}“: ${g.rows} Zeilen${g.paginated ? ', paginiert' : ''} (zum Verschieben ziehen)`}>
                   <span className="gui-tab-icon" aria-hidden="true">▦</span>
                   <span className="gui-tab-name">{g.id}</span>
                   <small className="gui-tab-meta">{g.rows}×9{g.paginated ? ' · pag.' : ''}</small>
@@ -482,7 +566,18 @@ export default function App() {
               <button type="button" onClick={addGui} title="Neue GUI im Projekt anlegen">+ Neue GUI</button>
             </span>
           </div>
+          {project.guis.length > 1 && (
+            <button type="button" className={`btn small links-toggle${view === 'links' ? ' on-panel' : ''}`}
+              aria-pressed={view === 'links'} onClick={() => setView(view === 'links' ? 'edit' : 'links')}
+              title="Zeigt, welche GUIs per open:-Aktion aufeinander verweisen">
+              Verknüpfungen
+            </button>
+          )}
         </nav>
+        {view === 'links' ? (
+          <LinkView project={project} onOpen={(i) => { switchGui(i); setView('edit'); }} />
+        ) : (
+          <>
           <div className="section">
             <div className="section-head">
               <span>Bearbeiten</span>
@@ -512,6 +607,8 @@ export default function App() {
             <p className="muted hint section-note">{hint}</p>
           </div>
           <Preview gui={gui} resolved={resolved} />
+          </>
+        )}
         </section>
 
         <aside className="panel">
