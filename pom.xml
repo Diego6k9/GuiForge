@@ -17,6 +17,8 @@
         <maven.compiler.release>25</maven.compiler.release>
         <paper.api.version>26.3.build.159-beta</paper.api.version>
         <gson.version>2.11.0</gson.version>
+        <!-- Where the shaded jar is written. Defaults to target/. Override per machine, see README. -->
+        <paper.plugins.dir>${project.build.directory}</paper.plugins.dir>
     </properties>
 
     <repositories>
@@ -62,7 +64,8 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.6.0</version>
+                <!-- 3.6.2+ reads Java 25 class files (ASM 9.9.x); 3.6.0 fails with "major version 69". -->
+                <version>3.6.2</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -70,6 +73,7 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <outputFile>${paper.plugins.dir}/${project.build.finalName}.jar</outputFile>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <relocations>
                                 <relocation>
