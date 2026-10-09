@@ -7,16 +7,47 @@
   "items": [
     {
       "key": "compass",
-      "slots": [0,1,2,3,4,5,6,7,8,9,17,18,19,20,21,22,23,24,25,26],
+      "slots": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
       "material": "minecraft:compass",
       "locked": true
     },
     {
       "key": "diamond",
-      "slots": [10,11,12,13,14,15,16],
+      "slots": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
       "material": "minecraft:diamond",
       "name": "<blue>Diamond!!!</blue>",
-      "lore": ["<red>Dies ist die Lore des items"],
+      "lore": [
+        "<red>Dies ist die Lore des items"
+      ],
       "locked": true,
       "action": "close"
     }
