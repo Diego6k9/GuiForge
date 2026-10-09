@@ -27,6 +27,7 @@ Layout-Daten für GUIs. Verhalten (Klick-Logik) gehört **nicht** ins Format, so
 | `customModelData` | int      | –           |                                                                                                                                                |
 | `glint`           | bool     | –           | Enchant-Glint erzwingen (`true`) oder unterdrücken (`false`). Ideal für Rahmen-Items.                                                          |
 | `hideTooltip`     | bool     | `false`     | Blendet den Hover-Tooltip aus. Für dekorative Items, damit keine leere Box erscheint.                                                          |
+| `hideAttributes`  | bool     | `true`      | Blendet die Attribut-Zeilen von Waffen und Rüstung (Schaden, Angriffstempo, Rüstung) im Tooltip aus. `false` zeigt sie wie im Spiel. |
 | `skin`            | string   | –           | Nur für `minecraft:player_head`. Textur-Hash (64 Hex-Zeichen) oder `http://textures.minecraft.net/texture/<hash>`. Andere Materialien: Fehler. |
 | `locked`          | bool     | `true`      | `false` = Spieler darf das Item aus dem Slot nehmen.                                                                                           |
 | `action`          | string   | –           | Nur geschlossene Navigation: `close`, `next-page`, `prev-page`, `open:<gui-id>`.                                                               |

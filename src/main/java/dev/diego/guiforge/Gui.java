@@ -25,6 +25,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
@@ -225,6 +226,10 @@ public final class Gui<T> {
             }
             if (item.hideTooltip != null) {
                 meta.setHideTooltip(item.hideTooltip);
+            }
+            // Menus should not show combat stats of weapons or armor unless the format asks for them.
+            if (item.hideAttributes == null || item.hideAttributes) {
+                meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
             }
             if (item.skin != null && meta instanceof SkullMeta skull) {
                 skull.setPlayerProfile(skinProfile(item.skin));
