@@ -96,30 +96,30 @@
             <id>server</id>
             <build>
                 <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-shade-plugin</artifactId>
-                    <!-- 3.6.2+ reads Java 25 class files (ASM 9.9.x); 3.6.0 fails with "major version 69". -->
-                    <version>3.6.2</version>
-                    <executions>
-                        <execution>
-                            <phase>package</phase>
-                            <goals>
-                                <goal>shade</goal>
-                            </goals>
-                            <configuration>
-                                <outputFile>${paper.plugins.dir}/${project.build.finalName}.jar</outputFile>
-                                <createDependencyReducedPom>false</createDependencyReducedPom>
-                                <relocations>
-                                    <relocation>
-                                        <pattern>com.google.gson</pattern>
-                                        <shadedPattern>dev.diego.guiforge.libs.gson</shadedPattern>
-                                    </relocation>
-                                </relocations>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <!-- 3.6.2+ reads Java 25 class files (ASM 9.9.x); 3.6.0 fails with "major version 69". -->
+                        <version>3.6.2</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>shade</goal>
+                                </goals>
+                                <configuration>
+                                    <outputFile>${paper.plugins.dir}/${project.build.finalName}.jar</outputFile>
+                                    <createDependencyReducedPom>false</createDependencyReducedPom>
+                                    <relocations>
+                                        <relocation>
+                                            <pattern>com.google.gson</pattern>
+                                            <shadedPattern>dev.diego.guiforge.libs.gson</shadedPattern>
+                                        </relocation>
+                                    </relocations>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                 </plugins>
             </build>
         </profile>

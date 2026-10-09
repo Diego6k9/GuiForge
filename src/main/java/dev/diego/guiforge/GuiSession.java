@@ -59,13 +59,17 @@ final class GuiSession implements InventoryHolder {
         return item != null && Boolean.FALSE.equals(item.locked);
     }
 
-    /** Called when the viewer closes this inventory, for whatever reason. */
+    /**
+     * Called when the viewer closes this inventory, for whatever reason.
+     */
     void handleClose() {
         gui.untrack(this);
         gui.dispatchClose(viewer);
     }
 
-    /** Re-renders items if this inventory is still the one the viewer has open. */
+    /**
+     * Re-renders items if this inventory is still the one the viewer has open.
+     */
     void refresh() {
         if (viewer.getOpenInventory().getTopInventory() == inventory) {
             render();

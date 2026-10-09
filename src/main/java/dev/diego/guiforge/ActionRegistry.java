@@ -8,10 +8,14 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
-/** Custom action prefixes registered by plugins. Built-in actions are handled by GuiSession. */
+/**
+ * Custom action prefixes registered by plugins. Built-in actions are handled by GuiSession.
+ */
 final class ActionRegistry {
 
-    /** Prefixes the runtime handles itself; plugins cannot register them. */
+    /**
+     * Prefixes the runtime handles itself; plugins cannot register them.
+     */
     static final Set<String> BUILT_IN_PREFIXES = Set.of("open:", "sound:", "message:");
 
     private final Map<String, BiConsumer<Player, String>> handlers = new LinkedHashMap<>();
@@ -25,7 +29,9 @@ final class ActionRegistry {
         handlers.put(prefix, handler);
     }
 
-    /** Runs the handler whose prefix matches. Returns false if none does. */
+    /**
+     * Runs the handler whose prefix matches. Returns false if none does.
+     */
     boolean run(String action, Player player) {
         for (Map.Entry<String, BiConsumer<Player, String>> entry : handlers.entrySet()) {
             if (action.startsWith(entry.getKey())) {

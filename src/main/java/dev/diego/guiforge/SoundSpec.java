@@ -4,7 +4,9 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** A parsed sound action: sound key, volume and pitch. */
+/**
+ * A parsed sound action: sound key, volume and pitch.
+ */
 record SoundSpec(String key, float volume, float pitch) {
 
     private static final Pattern SPEC = Pattern.compile("(.+?)(?::(\\d+(?:\\.\\d+)?):(\\d+(?:\\.\\d+)?))?");

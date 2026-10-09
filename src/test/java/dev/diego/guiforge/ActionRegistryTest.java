@@ -31,8 +31,10 @@ class ActionRegistryTest {
     void rejectsBuiltInPrefixesAndPrefixesWithoutColon() {
         ActionRegistry registry = new ActionRegistry();
         for (String prefix : ActionRegistry.BUILT_IN_PREFIXES) {
-            assertThrows(IllegalArgumentException.class, () -> registry.register(prefix, (player, arg) -> { }));
+            assertThrows(IllegalArgumentException.class, () -> registry.register(prefix, (player, arg) -> {
+            }));
         }
-        assertThrows(IllegalArgumentException.class, () -> registry.register("shop", (player, arg) -> { }));
+        assertThrows(IllegalArgumentException.class, () -> registry.register("shop", (player, arg) -> {
+        }));
     }
 }
