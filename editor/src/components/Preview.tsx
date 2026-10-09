@@ -1,5 +1,5 @@
 import { useState, type MouseEvent } from 'react';
-import { displayMaterial, ROLE_COLORS, roleOf, type EditorGui, type EditorItem } from '../format/model';
+import { displayMaterial, type EditorGui, type EditorItem } from '../format/model';
 import { parseMiniMessage, plainText, type Segment } from '../format/minimessage';
 import type { ResourcePack } from '../assets/resourcePack';
 import { SlotContent } from './SlotIcon';
@@ -16,7 +16,6 @@ interface Cell {
   label: string;
   /** Material id without minecraft:, for the icon from the resource pack. */
   material?: string;
-  color?: string;
   /** The item shown in this slot; drives the hover tooltip. */
   item?: EditorItem;
   /** Name for sample products, which have no item behind them. */
@@ -54,7 +53,6 @@ export function Preview({ gui, resolved, pack = null }: PreviewProps) {
   const itemCell = (item: EditorItem): Cell => ({
     label: plainText(item.name) || item.key,
     material: displayMaterial(item.material),
-    color: ROLE_COLORS[roleOf(item, gui)],
     item,
   });
 
@@ -64,7 +62,7 @@ export function Preview({ gui, resolved, pack = null }: PreviewProps) {
     if (gui.paginated && contentIndex >= 0) {
       const sample = currentPage * perPage + contentIndex;
       if (sample < SAMPLE_COUNT) {
-        cells.push({ label: `Produkt ${sample + 1}`, color: '#2b7a78', sampleName: `Produkt ${sample + 1}` });
+        cells.push({ label: `Produkt ${sample + 1}`, sampleName: `Produkt ${sample + 1}` });
       } else if (gui.fill === 'filler' && filler) {
         cells.push(itemCell(filler));
       } else {
@@ -110,13 +108,12 @@ export function Preview({ gui, resolved, pack = null }: PreviewProps) {
       </div>
       {/* Like the in-game container: the title sits inside the window, top left. */}
       <div className="mc-window">
-        <div className="mc-title">{titleText}</div>
+        <div className="mc-title"><McText source={gui.title.trim() ? gui.title : titleText} fallback="#404040" /></div>
         <div className="mc-grid preview-grid">
           {cells.map((cell, slot) => (
             <div
               key={slot}
               className="mc-slot preview-slot"
-              style={cell.color ? { background: cell.color } : undefined}
               onMouseEnter={(e) => onEnter(cell, e)}
               onMouseMove={onMove}
               onMouseLeave={() => setTip(null)}
@@ -147,23 +144,28 @@ function Tooltip({ tip }: { tip: Tip }) {
 
   return (
     <div className="mc-tooltip" style={{ left, top: y + TIP_OFFSET }} role="tooltip">
-      <div className="mc-tip-line mc-tip-name">{name.map(renderSegment)}</div>
+      <div className="mc-tip-line mc-tip-name">{name.map((seg, j) => <McSegment key={j} seg={seg} fallback="#ffffff" />)}</div>
       {lore.map((line, i) => (
         <div key={i} className="mc-tip-line">
-          {line.length ? line.map(renderSegment) : ' '}
+          {line.length ? line.map((seg, j) => <McSegment key={j} seg={seg} fallback="#ffffff" />) : ' '}
         </div>
       ))}
     </div>
   );
 }
 
-function renderSegment(seg: Segment, i: number) {
+/** A MiniMessage string as it appears in the game: colour and decorations, no tags. */
+export function McText({ source, fallback }: { source: string; fallback: string }) {
+  return <>{parseMiniMessage(source).map((seg, i) => <McSegment key={i} seg={seg} fallback={fallback} />)}</>;
+}
+
+function McSegment({ seg, fallback }: { seg: Segment; fallback: string }) {
   const style = {
-    color: seg.color ?? '#ffffff',
+    color: seg.color ?? fallback,
     fontWeight: seg.bold ? 700 : undefined,
     WebkitTextStroke: seg.bold ? '0.5px currentColor' : undefined,
     fontStyle: seg.italic ? 'italic' : undefined,
     textDecoration: [seg.underlined && 'underline', seg.strikethrough && 'line-through'].filter(Boolean).join(' ') || undefined,
   } as const;
-  return <span key={i} style={style}>{seg.text}</span>;
+  return <span style={style}>{seg.text}</span>;
 }

@@ -128,6 +128,26 @@ function serialize(root: HTMLElement, multiline: boolean): string {
   return text;
 }
 
+/**
+ * The game colours each lore line on its own, so a tag may not run across a line break. Tags that are
+ * open at the end of a line are closed there and opened again on the next line.
+ */
+export function selfContainedLines(text: string): string {
+  const lines: Char[][] = [[]];
+  for (const c of toChars(text)) {
+    if (c.ch === '\n') lines.push([]);
+    else lines[lines.length - 1].push(c);
+  }
+  return lines
+    .map((line) =>
+      groupChars(line)
+        .filter((g) => g.text)
+        .map((g) => g.tags.map((t) => `<${t}>`).join('') + g.text + [...g.tags].reverse().map((t) => `</${t}>`).join(''))
+        .join(''),
+    )
+    .join('\n');
+}
+
 /** How many text characters lie before a DOM position, counted the same way serialize() counts them. */
 function countBefore(root: HTMLElement, container: Node, offset: number): number {
   const pre = document.createRange();
@@ -220,7 +240,8 @@ export function RichField({ value, onChange, multiline = false, label }: RichFie
   const emit = () => {
     const el = ref.current;
     if (!el) return;
-    const next = serialize(el, multiline);
+    const raw = serialize(el, multiline);
+    const next = multiline ? selfContainedLines(raw) : raw;
     emitted.current = next;
     onChange(next);
   };

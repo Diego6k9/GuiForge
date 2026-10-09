@@ -11,7 +11,8 @@ import {
 import { Grid, type CellView } from './components/Grid';
 import { ItemPanel } from './components/ItemPanel';
 import { GuiPanel } from './components/GuiPanel';
-import { Preview } from './components/Preview';
+import { McText, Preview } from './components/Preview';
+import { RichField } from './components/RichField';
 import { LinkView } from './components/LinkView';
 import { Resizer } from './components/Resizer';
 import { ResourcePack } from './assets/resourcePack';
@@ -94,6 +95,8 @@ export default function App() {
   const [view, setView] = useState<'edit' | 'links'>('edit');
   const index = Math.min(activeIndex, project.guis.length - 1);
   const gui = project.guis[index];
+  // Only the visible characters count; the colour tags are not part of the in-game title.
+  const titleLength = gui.title.replace(/<[^>]*>/g, '').length;
   const [menu, setMenu] = useState<{ x: number; y: number; itemId: string } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [inspector, setInspector] = useState<Inspector>('gui');
@@ -713,9 +716,9 @@ export default function App() {
           <div className="section">
             <div className="section-head">
               <span>Bearbeiten</span>
-              <span className={gui.title.length > TITLE_LIMIT ? 'error-text' : 'muted'}
+              <span className={titleLength > TITLE_LIMIT ? 'error-text' : 'muted'}
                 title="Der Spieltitel wird ab etwa 32 Zeichen abgeschnitten">
-                Titel {gui.title.length}/{TITLE_LIMIT}
+                Titel {titleLength}/{TITLE_LIMIT}
               </span>
             </div>
             <div className="toolbar">
@@ -730,10 +733,13 @@ export default function App() {
                 </button>
               </div>
             </div>
+            <div className="form">
+              <RichField label="Titel (wird im Spiel oben angezeigt)" value={gui.title} onChange={(title) => patchGui({ title })} />
+            </div>
             <div className="mc-window">
-              <input className="mc-title mc-title-input" value={gui.title} placeholder={gui.id}
-                aria-label="Titel der GUI (wird im Spiel oben angezeigt)"
-                onChange={(e) => patchGui({ title: e.target.value })} />
+              <div className="mc-title">
+                <McText source={gui.title.trim() ? gui.title : gui.id} fallback="#404040" />
+              </div>
               <Grid cells={cells} onCellDown={onCellDown} onCellEnter={onCellEnter} onCellContext={onCellContext} pack={pack} />
             </div>
             <p className="muted hint section-note">{hint}</p>
@@ -756,6 +762,7 @@ export default function App() {
               <ItemPanel
                 item={selected}
                 gui={gui}
+                otherGuiIds={project.guis.map((g) => g.id).filter((id) => id !== gui.id)}
                 pack={pack}
                 onChange={(patch) => patchItem(selected.id, patch)}
                 onDelete={() => removeItem(selected.id)}

@@ -8,14 +8,20 @@ import {
 interface ItemPanelProps {
   item: EditorItem;
   gui: EditorGui;
+  /** Ids of the other GUIs in the project, offered as open:<id> actions. */
+  otherGuiIds: string[];
   pack: ResourcePack | null;
   onChange: (patch: Partial<EditorItem>) => void;
   onDelete: () => void;
 }
 
-const ACTIONS = ['', 'close', 'next-page', 'prev-page', 'open:'];
+/** Page actions only mean something in a paginated GUI; open:<id> points at one of the other GUIs. */
+function actionsFor(gui: EditorGui, otherGuiIds: string[]): string[] {
+  const base = gui.paginated ? ['', 'close', 'next-page', 'prev-page'] : ['', 'close'];
+  return [...base, ...otherGuiIds.map((id) => `open:${id}`)];
+}
 
-export function ItemPanel({ item, gui, pack, onChange, onDelete }: ItemPanelProps) {
+export function ItemPanel({ item, gui, otherGuiIds, pack, onChange, onDelete }: ItemPanelProps) {
   const slotMode = item.pattern ?? 'manual';
   const setSlotMode = (value: string) => {
     if (value === 'manual') onChange({ pattern: null });
@@ -113,11 +119,11 @@ export function ItemPanel({ item, gui, pack, onChange, onDelete }: ItemPanelProp
         <input
           list="actions"
           value={item.action}
-          placeholder="close, next-page, prev-page, open:<id>"
+          placeholder={gui.paginated ? 'close, next-page, prev-page, open:<id>' : 'close, open:<id>'}
           onChange={(e) => onChange({ action: e.target.value.trim() })}
         />
         <datalist id="actions">
-          {ACTIONS.map((a) => <option key={a} value={a} />)}
+          {actionsFor(gui, otherGuiIds).map((a) => <option key={a} value={a} />)}
         </datalist>
       </label>
 
