@@ -149,7 +149,7 @@ public final class Gui<T> {
                 meta.displayName(MINI.deserialize(item.name));
             }
             if (item.lore != null && !item.lore.isEmpty()) {
-                meta.lore(item.lore.stream().map(line -> MINI.deserialize(line)).toList());
+                meta.lore(item.lore.stream().map(MINI::deserialize).toList());
             }
             if (item.customModelData != null) {
                 meta.setCustomModelData(item.customModelData);

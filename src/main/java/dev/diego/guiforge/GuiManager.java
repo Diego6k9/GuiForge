@@ -59,7 +59,7 @@ public final class GuiManager {
         return plugin.getLogger();
     }
 
-    private final class ClickListener implements Listener {
+    private static final class ClickListener implements Listener {
 
         @EventHandler(priority = EventPriority.LOW, ignoreCancelled = false)
         void onClick(InventoryClickEvent event) {

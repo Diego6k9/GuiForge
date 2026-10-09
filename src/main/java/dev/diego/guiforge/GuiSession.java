@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.jspecify.annotations.NonNull;
 
 /** One opened inventory for one viewer. Owns the page state and the slot-to-item mapping. */
 final class GuiSession implements InventoryHolder {
@@ -42,7 +43,7 @@ final class GuiSession implements InventoryHolder {
     }
 
     @Override
-    public Inventory getInventory() {
+    public @NonNull Inventory getInventory() {
         return inventory;
     }
 
@@ -101,7 +102,7 @@ final class GuiSession implements InventoryHolder {
 
         ContentDefinition content = gui.content();
         int pages = pageCount();
-        page = Math.max(0, Math.min(page, pages - 1));
+        page = Math.clamp(page, 0, pages - 1);
 
         for (Gui.FixedItem fixed : gui.fixedItems()) {
             if (isHiddenNav(fixed.def(), content, pages)) {
