@@ -16,7 +16,11 @@ public final class SkinTexture {
     }
 
     /**
-     * Returns the lowercase texture hash, or throws IllegalArgumentException if the value is not a skin reference.
+     * Returns the lowercase texture hash for a skin reference.
+     *
+     * @param value the bare 64-character hash or a textures.minecraft.net URL
+     * @return the lowercase texture hash
+     * @throws IllegalArgumentException if the value is not a skin reference
      */
     public static String hashOf(String value) {
         String trimmed = value == null ? "" : value.trim();
@@ -33,6 +37,9 @@ public final class SkinTexture {
 
     /**
      * The canonical URL Paper expects for the skin texture.
+     *
+     * @param hash the texture hash
+     * @return the texture URL
      */
     public static String urlOf(String hash) {
         return "http://textures.minecraft.net/texture/" + hash;

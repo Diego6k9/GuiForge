@@ -13,6 +13,9 @@ import java.util.*;
  */
 public final class GuiLoader {
 
+    /**
+     * The only supported layout format version.
+     */
     public static final int FORMAT_VERSION = 1;
     private static final Gson GSON = new Gson();
     private static final Set<String> PATTERNS = Set.of("border", "empty");
@@ -20,6 +23,13 @@ public final class GuiLoader {
     private GuiLoader() {
     }
 
+    /**
+     * Parses and validates a layout.
+     *
+     * @param reader the layout JSON
+     * @return the parsed definition
+     * @throws IllegalArgumentException if the JSON is invalid or the layout fails validation
+     */
     public static GuiDefinition parse(Reader reader) {
         GuiDefinition def;
         try {
@@ -34,10 +44,25 @@ public final class GuiLoader {
         return def;
     }
 
+    /**
+     * Parses and validates a layout.
+     *
+     * @param json the layout JSON
+     * @return the parsed definition
+     * @throws IllegalArgumentException if the JSON is invalid or the layout fails validation
+     */
     public static GuiDefinition parse(String json) {
         return parse(new StringReader(json));
     }
 
+    /**
+     * Loads and parses a layout from a class loader resource.
+     *
+     * @param loader the class loader that finds the resource
+     * @param path the resource path, e.g. {@code gui/shop.json}
+     * @return the parsed definition
+     * @throws IOException if the resource is missing or cannot be read
+     */
     public static GuiDefinition loadResource(ClassLoader loader, String path) throws IOException {
         try (InputStream in = loader.getResourceAsStream(path)) {
             if (in == null) {
@@ -51,8 +76,10 @@ public final class GuiLoader {
      * Validates a definition, applies defaults and resolves slot patterns into {@code resolvedSlots}.
      * Throws IllegalArgumentException with a readable message on any error.
      *
-     * <p>Slot rules: explicit arrays always win. Pattern items ("border", "empty") only take slots
+     * <p>Slot rules: explicit arrays always win. Pattern items ({@code border}, {@code empty}) only take slots
      * that are still free and are not content slots, in the order they are defined.
+     *
+     * @param def the definition to validate
      */
     public static void validate(GuiDefinition def) {
         require(def.formatVersion == FORMAT_VERSION,

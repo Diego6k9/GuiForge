@@ -35,6 +35,7 @@ public final class GuiManager {
      * Creates the manager for a plugin. Create exactly one per plugin and reuse it: a second manager would
      * register a second click listener, and every click would then be handled twice.
      *
+     * @param plugin the plugin that owns the GUIs; its class loader is used to find layout resources
      * @throws IllegalStateException if the plugin already has a manager
      */
     public GuiManager(JavaPlugin plugin) {
@@ -47,9 +48,13 @@ public final class GuiManager {
     }
 
     /**
-     * Loads a GUI definition from a plugin resource, e.g. {@code "gui/shop-main.json"}.
+     * Loads a GUI definition from a plugin resource, e.g. {@code "gui/shop-main.json"}, and registers it under its id.
      *
+     * @param <T> type of the paginated content objects; {@code Object} for non-paginated GUIs
+     * @param resourcePath path of the layout inside the plugin's resources
+     * @return the loaded GUI
      * @throws UncheckedIOException if the resource is missing or cannot be read
+     * @throws IllegalArgumentException if the layout is invalid
      */
     public <T> Gui<T> load(String resourcePath) {
         try {
@@ -61,6 +66,11 @@ public final class GuiManager {
 
     /**
      * Creates a GUI from a parsed definition and registers it under its id (for {@code open:<id>}).
+     *
+     * @param <T> type of the paginated content objects; {@code Object} for non-paginated GUIs
+     * @param definition a parsed layout, e.g. from {@link GuiLoader#parse(String)}
+     * @return the GUI
+     * @throws IllegalArgumentException if the layout is invalid
      */
     public <T> Gui<T> create(GuiDefinition definition) {
         GuiLoader.validate(definition);
@@ -69,12 +79,21 @@ public final class GuiManager {
         return gui;
     }
 
+    /**
+     * Returns the GUI registered under this id, if any.
+     *
+     * @param id the id from the layout
+     * @return the GUI, or empty if no GUI has this id
+     */
     public Optional<Gui<?>> find(String id) {
         return Optional.ofNullable(guis.get(id));
     }
 
     /**
      * Opens a registered GUI by id. Logs a warning and does nothing if the id is unknown.
+     *
+     * @param player the viewer
+     * @param id the id of a registered GUI
      */
     public void open(Player player, String id) {
         Gui<?> gui = guis.get(id);
@@ -87,7 +106,11 @@ public final class GuiManager {
 
     /**
      * Registers an action for JSON strings that start with {@code prefix}, e.g. {@code "shop:"} for
-     * {@code "shop:buy"}. The handler receives the text after the prefix. Built-in prefixes cannot be used.
+     * {@code "shop:buy"}. The handler receives the text after the prefix.
+     *
+     * @param prefix the prefix, ending with ':'; built-in prefixes cannot be used
+     * @param handler receives the player and the text after the prefix
+     * @throws IllegalArgumentException if the prefix does not end with ':' or is built-in
      */
     public void registerAction(String prefix, BiConsumer<Player, String> handler) {
         actions.register(prefix, handler);

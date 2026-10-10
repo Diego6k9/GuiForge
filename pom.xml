@@ -6,7 +6,7 @@
 
     <groupId>io.github.diego6k9</groupId>
     <artifactId>guiforge</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
     <packaging>jar</packaging>
     <name>GuiForge</name>
     <description>Runtime library for data-driven Paper GUIs, paired with a visual web editor.</description>
@@ -86,6 +86,20 @@
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>
+            <!-- The library jar must not carry the demo plugin: a Paper plugin descriptor here
+                 would make every shading plugin load GuiForge's demo instead of its own plugin. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.1</version>
+                <configuration>
+                    <excludes>
+                        <exclude>paper-plugin.yml</exclude>
+                        <exclude>dev/diego/guiforge/GuiForgePlugin*.class</exclude>
+                        <exclude>gui/shop-*.json</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -96,6 +110,15 @@
             <id>server</id>
             <build>
                 <plugins>
+                    <!-- Overrides the library exclusions: the demo server needs the full jar. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <version>3.4.1</version>
+                        <configuration>
+                            <excludes combine.self="override"></excludes>
+                        </configuration>
+                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-shade-plugin</artifactId>

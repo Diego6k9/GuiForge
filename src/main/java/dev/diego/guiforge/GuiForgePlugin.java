@@ -33,6 +33,10 @@ import java.util.List;
  * Remove this class from the product once real commands exist.
  */
 public final class GuiForgePlugin extends JavaPlugin implements Listener {
+    /** Created by Paper when the plugin loads. */
+    public GuiForgePlugin() {
+    }
+
 
     private static final String[] BUNDLED = {"shop-main.json", "shop-list.json"};
     private final List<Gui<Object>> loaded = new ArrayList<>();
@@ -107,6 +111,11 @@ public final class GuiForgePlugin extends JavaPlugin implements Listener {
         return gui;
     }
 
+    /**
+     * Handles right-clicks with a stick for the demo plugin.
+ *
+ * @param event the interaction event
+     */
     @EventHandler
     public void onStick(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) {

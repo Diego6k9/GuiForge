@@ -61,7 +61,10 @@ public final class Gui<T> {
     }
 
     /**
-     * Converts MiniMessage to a component without Minecraft's default italics for names and lore.
+     * Converts MiniMessage to a component, with Minecraft's default italics turned off.
+     *
+     * @param miniMessage the MiniMessage text
+     * @return the component
      */
     public static Component text(String miniMessage) {
         return MINI.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
@@ -92,7 +95,12 @@ public final class Gui<T> {
     }
 
     /**
-     * Binds a click handler to the item with the given key. Fails fast on unknown keys.
+     * Binds a click handler to the fixed item with the given key. Fails fast on unknown keys.
+     *
+     * @param key the key of a fixed item in the layout
+     * @param handler called on each click on that item
+     * @return this GUI, for chaining
+     * @throws IllegalArgumentException if the layout has no item with this key
      */
     public Gui<T> onClick(String key, Consumer<ClickContext> handler) {
         requireKey(key);
@@ -101,8 +109,13 @@ public final class Gui<T> {
     }
 
     /**
-     * Replaces the item with the given key with whatever this returns, computed per viewer on each render.
-     * Use it for items whose content depends on the player (balance, rank, owned state, ...).
+     * Replaces the item with the given key with whatever the renderer returns, computed per viewer on each render.
+     * Use it for items whose content depends on the player, such as balance, rank or owned state.
+     *
+     * @param key the key of a fixed item in the layout
+     * @param renderer computes the item for a viewer
+     * @return this GUI, for chaining
+     * @throws IllegalArgumentException if the layout has no item with this key
      */
     public Gui<T> itemFor(String key, Function<Player, ItemStack> renderer) {
         requireKey(key);
@@ -113,6 +126,10 @@ public final class Gui<T> {
     /**
      * Registers a value for {@code {token}} in item names, lore and the GUI title. The value is inserted as plain text,
      * so player input cannot inject MiniMessage tags. Unknown tokens are left as they are.
+     *
+     * @param token the name without braces, e.g. {@code balance} for {@code {balance}}
+     * @param value computes the text for a viewer
+     * @return this GUI, for chaining
      */
     public Gui<T> placeholder(String token, Function<Player, String> value) {
         placeholders.put(token, Objects.requireNonNull(value, "value"));
@@ -121,6 +138,11 @@ public final class Gui<T> {
 
     /**
      * Sets the paginated content. Requires a {@code content} block in the definition.
+     *
+     * @param items the objects to show, one per content slot; the list is copied
+     * @param renderer turns one object into the item shown in its slot
+     * @return this GUI, for chaining
+     * @throws IllegalStateException if the GUI is not paginated
      */
     public Gui<T> setContents(List<T> items, Function<T, ItemStack> renderer) {
         if (definition.content == null) {
@@ -133,7 +155,10 @@ public final class Gui<T> {
     }
 
     /**
-     * Handles clicks on a content item, receiving the backing object instead of a slot number.
+     * Handles clicks on a content item. The handler receives the backing object instead of a slot number.
+     *
+     * @param handler receives the viewer and the clicked object
+     * @return this GUI, for chaining
      */
     public Gui<T> onContentClick(BiConsumer<Player, T> handler) {
         this.contentClickHandler = handler;
@@ -142,6 +167,9 @@ public final class Gui<T> {
 
     /**
      * Runs when a viewer opens this GUI. Several handlers can be added.
+     *
+     * @param handler receives the viewer
+     * @return this GUI, for chaining
      */
     public Gui<T> onOpen(Consumer<Player> handler) {
         openHandlers.add(Objects.requireNonNull(handler, "handler"));
@@ -150,6 +178,10 @@ public final class Gui<T> {
 
     /**
      * Runs when a viewer closes this GUI, also when it is replaced by another GUI or the player leaves.
+     * Several handlers can be added.
+     *
+     * @param handler receives the viewer
+     * @return this GUI, for chaining
      */
     public Gui<T> onClose(Consumer<Player> handler) {
         closeHandlers.add(Objects.requireNonNull(handler, "handler"));
@@ -158,7 +190,10 @@ public final class Gui<T> {
 
     /**
      * A copy of the fixed item with this key, as the layout defines it. Placeholders are not filled in;
-     * use {@link #itemFor} for per-player content. Empty if the GUI has no fixed item with this key.
+     * use {@link #itemFor} for per-player content.
+     *
+     * @param key the key of a fixed item in the layout
+     * @return a copy of the item, or empty if the GUI has no fixed item with this key
      */
     public Optional<ItemStack> item(String key) {
         FixedItem fixed = fixedByKey.get(key);
@@ -176,11 +211,18 @@ public final class Gui<T> {
 
     /**
      * Opens this GUI for a player with fresh state (page 0).
+     *
+     * @param player the viewer
      */
     public void open(Player player) {
         new GuiSession(this, manager, player).open();
     }
 
+    /**
+     * The id from the layout. Used by {@code open:<id>} actions and by {@link GuiManager#open}.
+     *
+     * @return the id
+     */
     public String id() {
         return definition.id;
     }
