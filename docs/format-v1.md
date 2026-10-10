@@ -62,6 +62,22 @@ In the format, `{token}` is plain text in `name`, `title` and `lore`. The code f
 Placeholder values are inserted as plain text, so MiniMessage tags in player data are not interpreted.
 Unknown tokens are left as they are.
 
+## Page tokens (paginated GUIs)
+
+Paginated GUIs have built-in tokens in item `name` and `lore`, and in `message:` actions. Page numbers start at 1 and are clamped to the valid range:
+
+| Token        | Value                                   |
+|--------------|-----------------------------------------|
+| `{page}`     | current page                            |
+| `{pages}`    | total number of pages                   |
+| `{prevPage}` | previous page (1 on the first page)     |
+| `{nextPage}` | next page (last page on the last page)  |
+
+Example: `"name": "<yellow>Next page <gold>({nextPage}/{pages})</gold>"`
+
+The GUI title is set when the menu opens and does not change while paging, so page tokens are not filled in the title.
+These names are reserved: `placeholder("page", …)` in Java throws an `IllegalArgumentException`.
+
 ## Slot patterns
 
 `"slots": "border"` covers the outer frame of the chest, `"slots": "empty"` covers all slots. Patterns are background:

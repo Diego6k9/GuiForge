@@ -121,7 +121,8 @@ final class GuiSession implements InventoryHolder {
                 } else if (action.startsWith("sound:")) {
                     playSound(action.substring("sound:".length()));
                 } else if (action.startsWith("message:")) {
-                    viewer.sendMessage(Gui.text(gui.resolve(action.substring("message:".length()), viewer)));
+                    viewer.sendMessage(Gui.text(gui.resolve(action.substring("message:".length()), viewer,
+                            PageTokens.of(page, pageCount()))));
                 } else if (!manager.runCustomAction(action, viewer)) {
                     manager.logger().warning("Unknown action '" + action + "' in GUI '" + gui.id() + "'");
                 }
@@ -137,31 +138,32 @@ final class GuiSession implements InventoryHolder {
         ContentDefinition content = gui.content();
         int pages = pageCount();
         page = Math.clamp(page, 0, pages - 1);
+        Map<String, String> tokens = PageTokens.of(page, pages);
 
         for (Gui.FixedItem fixed : gui.fixedItems()) {
             if (isHiddenNav(fixed.def(), content, pages)) {
                 // Hidden nav slots show the frame item instead of air, so the border stays closed.
                 Gui.FixedItem frame = frameItem(content);
                 if (frame != null) {
-                    place(frame, fixed.def().resolvedSlots);
+                    place(frame, fixed.def().resolvedSlots, tokens);
                 }
                 continue;
             }
-            place(fixed, fixed.def().resolvedSlots);
+            place(fixed, fixed.def().resolvedSlots, tokens);
         }
         if (content != null) {
-            renderContent(content);
+            renderContent(content, tokens);
         }
     }
 
-    private void place(Gui.FixedItem item, int[] slots) {
+    private void place(Gui.FixedItem item, int[] slots, Map<String, String> tokens) {
         for (int slot : slots) {
-            inventory.setItem(slot, gui.stackFor(item, viewer));
+            inventory.setItem(slot, gui.stackFor(item, viewer, tokens));
             definitionBySlot.put(slot, item.def());
         }
     }
 
-    private void renderContent(ContentDefinition content) {
+    private void renderContent(ContentDefinition content, Map<String, String> tokens) {
         int[] slots = gui.contentSlots();
         int perPage = slots.length;
         List<?> items = gui.contents();
@@ -175,7 +177,7 @@ final class GuiSession implements InventoryHolder {
                 inventory.setItem(slot, gui.renderContent(items.get(index)));
                 contentIndexBySlot.put(slot, index);
             } else if (padding != null) {
-                inventory.setItem(slot, gui.stackFor(padding, viewer));
+                inventory.setItem(slot, gui.stackFor(padding, viewer, tokens));
             }
         }
     }

@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -133,6 +134,11 @@ public final class GuiManager {
             }
             // Default: nothing can be taken out or moved. Only explicitly unlocked fixed items pass.
             event.setCancelled(true);
+            // A double click fires an extra click event. Ignore it so one click means one action,
+            // e.g. one page turn or one purchase.
+            if (event.getClick() == ClickType.DOUBLE_CLICK) {
+                return;
+            }
             if (event.getClickedInventory() == null
                     || !event.getClickedInventory().equals(event.getView().getTopInventory())) {
                 return;

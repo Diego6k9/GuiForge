@@ -52,7 +52,7 @@ public final class Gui<T> {
         this.manager = manager;
         this.definition = definition;
         for (ItemDefinition item : definition.items) {
-            FixedItem fixed = new FixedItem(item, buildStack(item, null));
+            FixedItem fixed = new FixedItem(item, buildStack(item, null, Map.of()));
             fixedItems.add(fixed);
             if (item.key != null) {
                 fixedByKey.put(item.key, fixed);
@@ -132,6 +132,9 @@ public final class Gui<T> {
      * @return this GUI, for chaining
      */
     public Gui<T> placeholder(String token, Function<Player, String> value) {
+        if (PageTokens.NAMES.contains(token)) {
+            throw new IllegalArgumentException("'" + token + "' is a built-in page token and cannot be a custom placeholder");
+        }
         placeholders.put(token, Objects.requireNonNull(value, "value"));
         return this;
     }
@@ -280,7 +283,7 @@ public final class Gui<T> {
     /**
      * The stack a viewer sees for a fixed item: custom renderer, then placeholders, then the cached template.
      */
-    ItemStack stackFor(FixedItem fixed, Player viewer) {
+    ItemStack stackFor(FixedItem fixed, Player viewer, Map<String, String> pageTokens) {
         ItemDefinition def = fixed.def();
         if (def.key != null) {
             Function<Player, ItemStack> custom = itemRenderers.get(def.key);
@@ -291,7 +294,7 @@ public final class Gui<T> {
         if (viewer == null || !hasTokens(def)) {
             return fixed.template().clone();
         }
-        return buildStack(def, viewer);
+        return buildStack(def, viewer, pageTokens);
     }
 
     @SuppressWarnings("unchecked")
@@ -322,7 +325,7 @@ public final class Gui<T> {
         }
     }
 
-    private ItemStack buildStack(ItemDefinition item, Player viewer) {
+    private ItemStack buildStack(ItemDefinition item, Player viewer, Map<String, String> pageTokens) {
         Material material = Material.matchMaterial(item.material);
         if (material == null) {
             throw new IllegalArgumentException("Unknown material '" + item.material + "' in item "
@@ -332,10 +335,10 @@ public final class Gui<T> {
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
             if (item.name != null) {
-                meta.displayName(text(resolve(item.name, viewer)));
+                meta.displayName(text(resolve(item.name, viewer, pageTokens)));
             }
             if (item.lore != null && !item.lore.isEmpty()) {
-                meta.lore(item.lore.stream().map(line -> text(resolve(line, viewer))).toList());
+                meta.lore(item.lore.stream().map(line -> text(resolve(line, viewer, pageTokens))).toList());
             }
             if (item.customModelData != null) {
                 meta.setCustomModelData(item.customModelData);
@@ -359,19 +362,32 @@ public final class Gui<T> {
     }
 
     /**
-     * Fills {token}s with the values of this viewer. Also used for the GUI title.
+     * Fills {token}s with the values of this viewer. Also used for the GUI title, which has no page tokens.
      */
     String resolve(String template, Player viewer) {
-        if (viewer == null || placeholders.isEmpty()) {
+        return resolve(template, viewer, Map.of());
+    }
+
+    /**
+     * Fills {token}s with the values of this viewer and the current page. Page tokens win over custom placeholders.
+     */
+    String resolve(String template, Player viewer, Map<String, String> pageTokens) {
+        if (viewer == null || (placeholders.isEmpty() && pageTokens.isEmpty())) {
             return template;
         }
         Matcher matcher = TOKEN.matcher(template);
         StringBuilder out = new StringBuilder();
         while (matcher.find()) {
-            Function<Player, String> value = placeholders.get(matcher.group(1));
-            String replacement = value == null
-                    ? matcher.group(0)
-                    : MINI.escapeTags(Objects.toString(value.apply(viewer), ""));
+            String name = matcher.group(1);
+            String replacement;
+            if (pageTokens.containsKey(name)) {
+                replacement = MINI.escapeTags(pageTokens.get(name));
+            } else {
+                Function<Player, String> value = placeholders.get(name);
+                replacement = value == null
+                        ? matcher.group(0)
+                        : MINI.escapeTags(Objects.toString(value.apply(viewer), ""));
+            }
             matcher.appendReplacement(out, Matcher.quoteReplacement(replacement));
         }
         matcher.appendTail(out);
