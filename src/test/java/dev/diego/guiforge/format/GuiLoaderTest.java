@@ -140,6 +140,17 @@ class GuiLoaderTest {
     }
 
     @Test
+    void fillerPatternSkipsContentSlots() {
+        // 1 row = 9 slots, content takes 2 and 3, so the filler gets the other 7.
+        GuiDefinition def = GuiLoader.parse("{\"formatVersion\":1,\"id\":\"t\",\"rows\":1,"
+                + "\"items\":[{\"key\":\"bg\",\"slots\":\"filler\"," + STONE + "}],"
+                + "\"content\":{\"slots\":[2,3]}}");
+        int[] bg = def.items.getFirst().resolvedSlots;
+        assertEquals(7, bg.length);
+        assertFalse(contains(bg, 2) || contains(bg, 3), "content slots must stay free of filler items");
+    }
+
+    @Test
     void acceptsSkinHashAndUrlOnPlayerHead() {
         GuiDefinition url = GuiLoader.parse(HEAD + "\"items\":[{\"key\":\"a\",\"slots\":[0],\"material\":\"minecraft:player_head\","
                 + "\"skin\":\"http://textures.minecraft.net/texture/" + HASH + "\"}]}");

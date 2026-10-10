@@ -6,7 +6,7 @@
 
     <groupId>io.github.diego6k9</groupId>
     <artifactId>guiforge</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.0</version>
     <packaging>jar</packaging>
     <name>GuiForge</name>
     <description>Runtime library for data-driven Paper GUIs, paired with a visual web editor.</description>

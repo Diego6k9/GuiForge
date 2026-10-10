@@ -18,7 +18,7 @@ public final class GuiLoader {
      */
     public static final int FORMAT_VERSION = 1;
     private static final Gson GSON = new Gson();
-    private static final Set<String> PATTERNS = Set.of("border", "empty");
+    private static final Set<String> PATTERNS = Set.of("border", "filler", "empty");
 
     private GuiLoader() {
     }
@@ -76,7 +76,7 @@ public final class GuiLoader {
      * Validates a definition, applies defaults and resolves slot patterns into {@code resolvedSlots}.
      * Throws IllegalArgumentException with a readable message on any error.
      *
-     * <p>Slot rules: explicit arrays always win. Pattern items ({@code border}, {@code empty}) only take slots
+     * <p>Slot rules: explicit arrays always win. Pattern items ({@code border}, {@code filler}; {@code empty} is the older name of filler) only take slots
      * that are still free and are not content slots, in the order they are defined.
      *
      * @param def the definition to validate

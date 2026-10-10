@@ -80,7 +80,7 @@ These names are reserved: `placeholder("page", …)` in Java throws an `IllegalA
 
 ## Slot patterns
 
-`"slots": "border"` covers the outer frame of the chest, `"slots": "empty"` covers all slots. Patterns are background:
+`"slots": "border"` covers the outer frame of the chest, `"slots": "filler"` covers all free slots. The older spelling `"empty"` is still accepted. Patterns are background:
 they
 only take slots that are still free and do not belong to the content area. Explicit slot lists are always assigned
 first.

@@ -17,7 +17,7 @@ public final class ItemDefinition {
      */
     public String key;
     /**
-     * Either an array of slot indices, or a pattern name: "border" or "empty". Resolved by GuiLoader.
+     * Either an array of slot indices, or a pattern name: "border" or "filler" ("empty" is the older name of "filler"). Resolved by GuiLoader.
      */
     public JsonElement slots;
     /**
