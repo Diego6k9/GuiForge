@@ -124,7 +124,8 @@
             </build>
         </profile>
 
-        <!-- Sources and Javadoc for Maven Central. Signing and deployment are added once the accounts exist. -->
+        <!-- Everything Maven Central requires: sources, Javadoc, GPG signatures, and upload via the Central Portal.
+             Release with: mvn clean deploy -Prelease (needs a GPG key and a 'central' server in ~/.m2/settings.xml). -->
         <profile>
             <id>release</id>
             <build>
@@ -154,6 +155,32 @@
                                 </goals>
                             </execution>
                         </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.7</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.7.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <!-- false: the first release is checked and published by hand in the Central Portal. -->
+                            <autoPublish>false</autoPublish>
+                            <waitUntil>validated</waitUntil>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
