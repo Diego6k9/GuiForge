@@ -11,7 +11,7 @@ Add GuiForge as a dependency (once published to Maven Central):
     <dependency>
       <groupId>io.github.diego6k9</groupId>
       <artifactId>guiforge</artifactId>
-      <version>0.1.2</version>
+      <version>0.2.0</version>
     </dependency>
 
 Then load a layout from your plugin's resources and bind click handlers by item key:
