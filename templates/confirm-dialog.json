@@ -1,0 +1,58 @@
+{
+  "formatVersion": 1,
+  "id": "confirm-dialog",
+  "type": "chest",
+  "rows": 3,
+  "title": "<gradient:#ff9966:#ff5e62>Are you sure?</gradient>",
+  "items": [
+    {
+      "key": "frame",
+      "slots": "border",
+      "material": "minecraft:gray_stained_glass_pane",
+      "name": " ",
+      "locked": true,
+      "hideTooltip": true,
+      "glint": true
+    },
+    {
+      "key": "filler",
+      "slots": "empty",
+      "material": "minecraft:gray_stained_glass_pane",
+      "name": " ",
+      "locked": true,
+      "hideTooltip": true,
+      "glint": true
+    },
+    {
+      "key": "info",
+      "slots": [
+        13
+      ],
+      "material": "minecraft:paper",
+      "name": "<white>Please confirm your choice",
+      "lore": [
+        "<gray>This cannot be undone."
+      ],
+      "locked": true
+    },
+    {
+      "key": "confirm",
+      "slots": [
+        11
+      ],
+      "material": "minecraft:lime_dye",
+      "name": "<green><bold>Confirm</bold></green>",
+      "locked": true
+    },
+    {
+      "key": "cancel",
+      "slots": [
+        15
+      ],
+      "material": "minecraft:red_dye",
+      "name": "<red>Cancel",
+      "locked": true,
+      "action": "close"
+    }
+  ]
+}

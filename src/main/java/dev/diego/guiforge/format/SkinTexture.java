@@ -5,12 +5,12 @@ import java.util.regex.Pattern;
 
 /**
  * Turns a player-head skin reference into its texture hash.
- * Accepts the bare 64-character hash or a {@code textures.minecraft.net/texture/<hash>} URL.
+ * Accepts the bare hash (1 to 64 hex characters) or a {@code textures.minecraft.net/texture/<hash>} URL.
  */
 public final class SkinTexture {
-    private static final Pattern HASH = Pattern.compile("[0-9a-f]{64}");
+    private static final Pattern HASH = Pattern.compile("[0-9a-f]{1,64}");
     private static final Pattern URL = Pattern.compile(
-            "^https?://textures\\.minecraft\\.net/texture/([0-9a-fA-F]{64})/?$");
+            "^https?://textures\\.minecraft\\.net/texture/([0-9a-fA-F]{1,64})/?$");
 
     private SkinTexture() {
     }
@@ -18,7 +18,7 @@ public final class SkinTexture {
     /**
      * Returns the lowercase texture hash for a skin reference.
      *
-     * @param value the bare 64-character hash or a textures.minecraft.net URL
+     * @param value the bare hash or a textures.minecraft.net URL
      * @return the lowercase texture hash
      * @throws IllegalArgumentException if the value is not a skin reference
      */

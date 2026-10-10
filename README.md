@@ -2,7 +2,7 @@
 
 Data-driven GUIs for Paper plugins: design a menu visually, load it at runtime, bind click handlers by key.
 
-Status: v0.1.1 (first public release was v0.1.0). Licensed under the MIT License, see `LICENSE`.
+Status: v0.1.2 (first public release was v0.1.0). Licensed under the MIT License, see `LICENSE`.
 
 ## Usage
 

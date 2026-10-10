@@ -1,0 +1,85 @@
+{
+  "formatVersion": 1,
+  "id": "category-menu",
+  "type": "chest",
+  "rows": 3,
+  "title": "<gradient:#4facfe:#00f2fe>Categories</gradient>",
+  "items": [
+    {
+      "key": "frame",
+      "slots": "border",
+      "material": "minecraft:gray_stained_glass_pane",
+      "name": " ",
+      "locked": true,
+      "hideTooltip": true,
+      "glint": true
+    },
+    {
+      "key": "filler",
+      "slots": "empty",
+      "material": "minecraft:gray_stained_glass_pane",
+      "name": " ",
+      "locked": true,
+      "hideTooltip": true,
+      "glint": true
+    },
+    {
+      "key": "cat-weapons",
+      "slots": [
+        10
+      ],
+      "material": "minecraft:diamond_sword",
+      "name": "<aqua>Weapons",
+      "lore": [
+        "<gray>Swords, bows and more"
+      ],
+      "locked": true
+    },
+    {
+      "key": "cat-food",
+      "slots": [
+        12
+      ],
+      "material": "minecraft:bread",
+      "name": "<gold>Food",
+      "lore": [
+        "<gray>Consumables"
+      ],
+      "locked": true
+    },
+    {
+      "key": "cat-tools",
+      "slots": [
+        14
+      ],
+      "material": "minecraft:iron_pickaxe",
+      "name": "<gray>Tools",
+      "lore": [
+        "<gray>Pickaxes, shovels, axes"
+      ],
+      "locked": true
+    },
+    {
+      "key": "cat-blocks",
+      "slots": [
+        16
+      ],
+      "material": "minecraft:bricks",
+      "name": "<red>Blocks",
+      "lore": [
+        "<gray>Building materials"
+      ],
+      "locked": true
+    },
+    {
+      "key": "close",
+      "slots": [
+        22
+      ],
+      "material": "minecraft:barrier",
+      "name": "<red>Close",
+      "locked": true,
+      "action": "close"
+    }
+  ]
+}
