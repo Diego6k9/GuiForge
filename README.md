@@ -2,7 +2,7 @@
 
 Data-driven GUIs for Paper plugins: design a menu visually, load it at runtime, bind click handlers by key.
 
-Status: v0.2.0 (first public release was v0.1.0). Licensed under the MIT License, see `LICENSE`.
+Status: v0.3.0 (first public release was v0.1.0). Licensed under the MIT License, see `LICENSE`.
 
 ## Usage
 
@@ -11,7 +11,7 @@ Add GuiForge as a dependency (once published to Maven Central):
     <dependency>
       <groupId>io.github.diego6k9</groupId>
       <artifactId>guiforge</artifactId>
-      <version>0.2.0</version>
+      <version>0.3.0</version>
     </dependency>
 
 Then load a layout from your plugin's resources and bind click handlers by item key:
