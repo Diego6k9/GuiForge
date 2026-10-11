@@ -26,6 +26,15 @@ Create one `GuiManager` per plugin and reuse it. A second one for the same plugi
 
 Layouts follow the format described in `docs/format-v1.md`.
 
+## Features
+
+- **Click handlers** bound by item key with `onClick`, see [format](docs/format-v1.md).
+- **Per-player items** with `itemFor`, see [format](docs/format-v1.md).
+- **Placeholders** `{token}` in names, lore, titles and messages, with `placeholder` and `placeholderComponent`. See [placeholders and translations](docs/placeholders-and-translations.md).
+- **Translations** from YAML language files with per-player language and fallback. See [placeholders and translations](docs/placeholders-and-translations.md).
+- **Paginated GUIs** with `setContents`, `onContentClick` and page tokens. See [paginated GUIs](docs/paginated-guis.md).
+- **Actions** `close`, `next-page`, `prev-page`, `open:`, `sound:`, `message:`, and your own prefixes with `registerAction`. See [actions](docs/actions.md).
+
 ## Editor
 
 Layouts can be designed in the GuiForge web editor. The editor is coming soon, and this section will get a link at launch.
