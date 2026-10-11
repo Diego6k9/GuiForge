@@ -37,7 +37,8 @@ Layouts follow the format described in `docs/format-v1.md`.
 
 ## Editor
 
-Layouts can be designed in the GuiForge web editor. The editor is coming soon, and this section will get a link at launch.
+Layouts can be designed in the GuiForge web editor: https://guiforge-editor.pages.dev/
+
 Layouts are plain JSON files, so you can also write them by hand, see `docs/format-v1.md`.
 
 ## Templates
