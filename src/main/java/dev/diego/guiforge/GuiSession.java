@@ -4,8 +4,8 @@ import dev.diego.guiforge.format.ContentDefinition;
 import dev.diego.guiforge.format.GuiDefinition;
 import dev.diego.guiforge.format.ItemDefinition;
 import net.kyori.adventure.key.Key;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.sound.Sound;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -22,7 +22,6 @@ import java.util.Map;
  */
 final class GuiSession implements InventoryHolder {
 
-    private static final MiniMessage MINI = MiniMessage.miniMessage();
 
     private final Gui<?> gui;
     private final GuiManager manager;
@@ -37,8 +36,8 @@ final class GuiSession implements InventoryHolder {
         this.manager = manager;
         this.viewer = viewer;
         GuiDefinition def = gui.definition();
-        String title = gui.resolve(def.title == null ? "" : def.title, viewer);
-        this.inventory = Bukkit.createInventory(this, def.rows * 9, MINI.deserialize(title));
+        Component title = gui.render(def.title == null ? "" : def.title, viewer, Map.of());
+        this.inventory = Bukkit.createInventory(this, def.rows * 9, title);
     }
 
     void open() {
@@ -121,8 +120,8 @@ final class GuiSession implements InventoryHolder {
                 } else if (action.startsWith("sound:")) {
                     playSound(action.substring("sound:".length()));
                 } else if (action.startsWith("message:")) {
-                    viewer.sendMessage(Gui.text(gui.resolve(action.substring("message:".length()), viewer,
-                            PageTokens.of(page, pageCount()))));
+                    viewer.sendMessage(gui.renderText(action.substring("message:".length()), viewer,
+                            PageTokens.of(page, pageCount())));
                 } else if (!manager.runCustomAction(action, viewer)) {
                     manager.logger().warning("Unknown action '" + action + "' in GUI '" + gui.id() + "'");
                 }

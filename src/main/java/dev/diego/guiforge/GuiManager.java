@@ -31,6 +31,7 @@ public final class GuiManager {
     private final JavaPlugin plugin;
     private final Map<String, Gui<?>> guis = new HashMap<>();
     private final ActionRegistry actions = new ActionRegistry();
+    private volatile Translator translator;
 
     /**
      * Creates the manager for a plugin. Create exactly one per plugin and reuse it: a second manager would
@@ -115,6 +116,20 @@ public final class GuiManager {
      */
     public void registerAction(String prefix, BiConsumer<Player, String> handler) {
         actions.register(prefix, handler);
+    }
+
+    /**
+     * Sets where {@code {key}} tokens without a registered placeholder get their text from, e.g. a language file.
+     * The translator is asked with the viewer's language on every render. Pass {@code null} to remove it.
+     *
+     * @param translator the translator, or null
+     */
+    public void setTranslator(Translator translator) {
+        this.translator = translator;
+    }
+
+    Translator translator() {
+        return translator;
     }
 
     boolean runCustomAction(String action, Player player) {

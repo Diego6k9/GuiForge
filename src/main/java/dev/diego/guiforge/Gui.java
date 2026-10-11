@@ -9,6 +9,8 @@ import dev.diego.guiforge.format.SkinTexture;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.Tag;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -41,7 +43,7 @@ public final class Gui<T> {
     private final Map<String, FixedItem> fixedByKey = new HashMap<>();
     private final Map<String, Consumer<ClickContext>> handlers = new HashMap<>();
     private final Map<String, Function<Player, ItemStack>> itemRenderers = new HashMap<>();
-    private final Map<String, Function<Player, String>> placeholders = new HashMap<>();
+    private final Map<String, Function<Player, Component>> placeholders = new HashMap<>();
     private final List<Consumer<Player>> openHandlers = new ArrayList<>();
     private final List<Consumer<Player>> closeHandlers = new ArrayList<>();
     private final Set<GuiSession> openSessions = new HashSet<>();
@@ -68,6 +70,89 @@ public final class Gui<T> {
      */
     public static Component text(String miniMessage) {
         return MINI.deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
+    }
+
+    /** Rounds of translation expansion. A translation may refer to other keys; this stops cycles. */
+    private static final int MAX_TRANSLATION_ROUNDS = 5;
+
+    /**
+     * Renders a template for a viewer. Unknown {@code {key}}s are looked up in the translator first, then the
+     * remaining {@code {token}}s are replaced by their components, and the rest is MiniMessage.
+     * Tokens are swapped for tags first, so inserted components are not parsed as MiniMessage.
+     *
+     * @return the rendered component, not decorated
+     */
+    Component render(String template, Player viewer, Map<String, String> pageTokens) {
+        if (viewer == null) {
+            return MINI.deserialize(template);
+        }
+        String expanded = expandTranslations(template, viewer, pageTokens);
+        if (placeholders.isEmpty() && pageTokens.isEmpty()) {
+            return MINI.deserialize(expanded);
+        }
+        List<TagResolver> resolvers = new ArrayList<>();
+        Matcher matcher = TOKEN.matcher(expanded);
+        StringBuilder out = new StringBuilder();
+        while (matcher.find()) {
+            String name = matcher.group(1);
+            Component value;
+            if (pageTokens.containsKey(name)) {
+                value = Component.text(pageTokens.get(name));
+            } else {
+                Function<Player, Component> custom = placeholders.get(name);
+                if (custom == null) {
+                    matcher.appendReplacement(out, Matcher.quoteReplacement(matcher.group(0)));
+                    continue;
+                }
+                value = custom.apply(viewer);
+            }
+            String tag = "gfph" + resolvers.size();
+            resolvers.add(TagResolver.resolver(tag, Tag.inserting(value)));
+            matcher.appendReplacement(out, "<" + tag + ">");
+        }
+        matcher.appendTail(out);
+        return MINI.deserialize(out.toString(), TagResolver.resolver(resolvers));
+    }
+
+    /**
+     * Replaces {@code {key}}s that are not placeholders by the translator's text for the viewer's language.
+     * Translations are MiniMessage from the plugin itself, so they are inserted as they are. Keys without a
+     * translation stay as they are.
+     */
+    private String expandTranslations(String template, Player viewer, Map<String, String> pageTokens) {
+        Translator translator = manager.translator();
+        if (translator == null) {
+            return template;
+        }
+        String current = template;
+        for (int round = 0; round < MAX_TRANSLATION_ROUNDS; round++) {
+            Matcher matcher = TOKEN.matcher(current);
+            StringBuilder out = new StringBuilder();
+            boolean changed = false;
+            while (matcher.find()) {
+                String name = matcher.group(1);
+                Optional<String> found = pageTokens.containsKey(name) || placeholders.containsKey(name)
+                        ? Optional.empty()
+                        : translator.translate(viewer, name);
+                if (found.isPresent()) {
+                    changed = true;
+                    matcher.appendReplacement(out, Matcher.quoteReplacement(found.get()));
+                } else {
+                    matcher.appendReplacement(out, Matcher.quoteReplacement(matcher.group(0)));
+                }
+            }
+            matcher.appendTail(out);
+            current = out.toString();
+            if (!changed) {
+                break;
+            }
+        }
+        return current;
+    }
+
+    /** Like {@link #render} with Minecraft's default italics turned off, as used for names, lore and messages. */
+    Component renderText(String template, Player viewer, Map<String, String> pageTokens) {
+        return render(template, viewer, pageTokens).decoration(TextDecoration.ITALIC, false);
     }
 
     private static boolean hasTokens(ItemDefinition def) {
@@ -124,14 +209,28 @@ public final class Gui<T> {
     }
 
     /**
-     * Registers a value for {@code {token}} in item names, lore and the GUI title. The value is inserted as plain text,
-     * so player input cannot inject MiniMessage tags. Unknown tokens are left as they are.
+     * Registers a value for {@code {token}} in item names, lore, the GUI title and messages. The value is inserted as
+     * plain text, so player input cannot inject MiniMessage tags. Unknown tokens are left as they are.
      *
      * @param token the name without braces, e.g. {@code balance} for {@code {balance}}
      * @param value computes the text for a viewer
      * @return this GUI, for chaining
      */
     public Gui<T> placeholder(String token, Function<Player, String> value) {
+        Objects.requireNonNull(value, "value");
+        return placeholderComponent(token, viewer -> Component.text(String.valueOf(value.apply(viewer))));
+    }
+
+    /**
+     * Registers a component for {@code {token}}. Use it for text that carries its own colours, such as a message
+     * from a language file: build it with MiniMessage and insert dynamic parts with {@code Component.text(...)}, so
+     * they stay plain text. The component is inserted as it is.
+     *
+     * @param token the name without braces
+     * @param value computes the component for a viewer
+     * @return this GUI, for chaining
+     */
+    public Gui<T> placeholderComponent(String token, Function<Player, Component> value) {
         if (PageTokens.NAMES.contains(token)) {
             throw new IllegalArgumentException("'" + token + "' is a built-in page token and cannot be a custom placeholder");
         }
@@ -335,10 +434,10 @@ public final class Gui<T> {
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
             if (item.name != null) {
-                meta.displayName(text(resolve(item.name, viewer, pageTokens)));
+                meta.displayName(renderText(item.name, viewer, pageTokens));
             }
             if (item.lore != null && !item.lore.isEmpty()) {
-                meta.lore(item.lore.stream().map(line -> text(resolve(line, viewer, pageTokens))).toList());
+                meta.lore(item.lore.stream().map(line -> renderText(line, viewer, pageTokens)).toList());
             }
             if (item.customModelData != null) {
                 meta.setCustomModelData(item.customModelData);
@@ -359,39 +458,6 @@ public final class Gui<T> {
             stack.setItemMeta(meta);
         }
         return stack;
-    }
-
-    /**
-     * Fills {token}s with the values of this viewer. Also used for the GUI title, which has no page tokens.
-     */
-    String resolve(String template, Player viewer) {
-        return resolve(template, viewer, Map.of());
-    }
-
-    /**
-     * Fills {token}s with the values of this viewer and the current page. Page tokens win over custom placeholders.
-     */
-    String resolve(String template, Player viewer, Map<String, String> pageTokens) {
-        if (viewer == null || (placeholders.isEmpty() && pageTokens.isEmpty())) {
-            return template;
-        }
-        Matcher matcher = TOKEN.matcher(template);
-        StringBuilder out = new StringBuilder();
-        while (matcher.find()) {
-            String name = matcher.group(1);
-            String replacement;
-            if (pageTokens.containsKey(name)) {
-                replacement = MINI.escapeTags(pageTokens.get(name));
-            } else {
-                Function<Player, String> value = placeholders.get(name);
-                replacement = value == null
-                        ? matcher.group(0)
-                        : MINI.escapeTags(Objects.toString(value.apply(viewer), ""));
-            }
-            matcher.appendReplacement(out, Matcher.quoteReplacement(replacement));
-        }
-        matcher.appendTail(out);
-        return out.toString();
     }
 
     record FixedItem(ItemDefinition def, ItemStack template) {
