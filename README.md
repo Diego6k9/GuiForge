@@ -33,7 +33,10 @@ Layouts follow the format described in `docs/format-v1.md`.
 - **Placeholders** `{token}` in names, lore, titles and messages, with `placeholder` and `placeholderComponent`. See [placeholders and translations](docs/placeholders-and-translations.md).
 - **Translations** from YAML language files with per-player language and fallback. See [placeholders and translations](docs/placeholders-and-translations.md).
 - **Paginated GUIs** with `setContents`, `onContentClick` and page tokens. See [paginated GUIs](docs/paginated-guis.md).
+- **Connect GUIs** via items.
+- **Import & Export** aswell as templates.
 - **Actions** `close`, `next-page`, `prev-page`, `open:`, `sound:`, `message:`, and your own prefixes with `registerAction`. See [actions](docs/actions.md).
+- **Ready-made templates**: shop, confirm dialog, category menu, admin toggles, auction listing.
 
 ## Editor
 
